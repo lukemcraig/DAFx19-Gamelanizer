@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="zkYIqU" name="Gamelanizer" projectType="audioplug" jucerVersion="5.4.3"
+              reportAppUsage="0" pluginName="Gamelanizer" pluginManufacturer="Luke M. Craig"
+              pluginManufacturerCode="LMCA" pluginCode="LCGZ" pluginVST3Category="Delay,Fx,Pitch Shift"
+              companyName="Luke M. Craig" splashScreenColour="Light" pluginFormats="buildAU,buildAUv3,buildVST3"
+              bundleIdentifier="com.lukemcraig.gamelanizer" aaxIdentifier="com.lukemcraig.gamelanizer"
+              companyCopyright="Luke McDuffie Craig" companyWebsite="https://github.com/lukemcraig/DAFx19-Gamelanizer"
+              version="1.0.0" defines="MeasurePerformance=0" userNotes="MeasurePerformance should be set to 0!">
+  <MAINGROUP id="zJuxY6" name="Gamelanizer">
+    <GROUP id="{1B06189C-7442-D005-E8F8-CFC07676708D}" name="Source">
+      <GROUP id="{81E4F54F-C489-1C95-7F65-B69D99907E7F}" name="GUI">
+        <FILE id="KeZJ1L" name="SliderToggleableSnap.cpp" compile="1" resource="0"
+              file="Source/SliderToggleableSnap.cpp"/>
+        <FILE id="FUOn6V" name="SliderToggleableSnap.h" compile="0" resource="0"
+              file="Source/SliderToggleableSnap.h"/>
+        <FILE id="pkdcfC" name="TaperControls.cpp" compile="1" resource="0"
+              file="Source/TaperControls.cpp"/>
+        <FILE id="lCJd5K" name="TaperControls.h" compile="0" resource="0" file="Source/TaperControls.h"/>
+        <FILE id="LreRNr" name="PluginEditor.cpp" compile="1" resource="0"
+              file="Source/PluginEditor.cpp"/>
+        <FILE id="FDDI0A" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+        <FILE id="LfbepA" name="CleanLookAndFeel.cpp" compile="1" resource="0"
+              file="Source/CleanLookAndFeel.cpp"/>
+        <FILE id="Jgtt7v" name="CleanLookAndFeel.h" compile="0" resource="0"
+              file="Source/CleanLookAndFeel.h"/>
+      </GROUP>
+      <GROUP id="{2EB67AF2-DA73-9DF9-8039-6673A66EE8D6}" name="Parameters">
+        <FILE id="ThrM41" name="GamelanizerParameters.cpp" compile="1" resource="0"
+              file="Source/GamelanizerParameters.cpp"/>
+        <FILE id="FWVC3e" name="GamelanizerParameters.h" compile="0" resource="0"
+              file="Source/GamelanizerParameters.h"/>
+        <FILE id="QtcaAH" name="GamelanizerParametersVTSHelper.cpp" compile="1"
+              resource="0" file="Source/GamelanizerParametersVTSHelper.cpp"/>
+        <FILE id="kYiA8l" name="GamelanizerParametersVTSHelper.h" compile="0"
+              resource="0" file="Source/GamelanizerParametersVTSHelper.h"/>
+      </GROUP>
+      <GROUP id="{48D9ED39-286E-2EE4-9C0E-50CA8FCA8B79}" name="Utility">
+        <FILE id="FQQCvM" name="WindowingFunctions.cpp" compile="1" resource="0"
+              file="Source/WindowingFunctions.cpp"/>
+        <FILE id="mts2Nd" name="WindowingFunctions.h" compile="0" resource="0"
+              file="Source/WindowingFunctions.h"/>
+        <FILE id="MTxQ2f" name="PerformanceMeasures.cpp" compile="1" resource="0"
+              file="Source/PerformanceMeasures.cpp"/>
+        <FILE id="F6MUa6" name="PerformanceMeasures.h" compile="0" resource="0"
+              file="Source/PerformanceMeasures.h"/>
+        <FILE id="ISv4Jx" name="ModuloSameSignAsDivisor.cpp" compile="1" resource="0"
+              file="Source/ModuloSameSignAsDivisor.cpp"/>
+        <FILE id="vXuUOq" name="ModuloSameSignAsDivisor.h" compile="0" resource="0"
+              file="Source/ModuloSameSignAsDivisor.h"/>
+      </GROUP>
+      <FILE id="JaG0No" name="BeatSampleInfo.cpp" compile="1" resource="0"
+            file="Source/BeatSampleInfo.cpp"/>
+      <FILE id="HAizTX" name="BeatSampleInfo.h" compile="0" resource="0"
+            file="Source/BeatSampleInfo.h"/>
+      <FILE id="waSioV" name="GamelanizerConstants.h" compile="0" resource="0"
+            file="Source/GamelanizerConstants.h"/>
+      <FILE id="gq8tbq" name="PhaseVocoder.cpp" compile="1" resource="0"
+            file="Source/PhaseVocoder.cpp"/>
+      <FILE id="NvmHQT" name="PhaseVocoder.h" compile="0" resource="0" file="Source/PhaseVocoder.h"/>
+      <FILE id="VbC5MU" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="Source/PluginProcessor.cpp"/>
+      <FILE id="NWqN4Y" name="PluginProcessor.h" compile="0" resource="0"
+            file="Source/PluginProcessor.h"/>
+      <FILE id="AhOLQX" name="PluginProcessorBoilerplate.cpp" compile="1"
+            resource="0" file="Source/PluginProcessorBoilerplate.cpp"/>
+    </GROUP>
+  </MAINGROUP>
+  <EXPORTFORMATS>
+    <VS2017 targetFolder="Builds/VisualStudio2017">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="Gamelanizer - Debug"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="Gamelanizer"/>
+        <CONFIGURATION isDebug="0" name="Release - MKL" targetName="Gamelanizer" libraryPath="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\lib\intel64&#10;"
+                       headerPath="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\include"
+                       userNotes="If you want to build with MKL's FFT, set the flag in the juce_dsp module. Make sure the search paths above are correct for your MKL installation. Copy these next lines to the &quot;External Libraries to Link&quot; field. Finally, build with this configuration.&#10;&#10;mkl_intel_ilp64.lib&#10;mkl_sequential.lib&#10;mkl_core.lib"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_opengl"/>
+        <MODULEPATH id="juce_gui_extra"/>
+        <MODULEPATH id="juce_gui_basics"/>
+        <MODULEPATH id="juce_graphics"/>
+        <MODULEPATH id="juce_events"/>
+        <MODULEPATH id="juce_dsp"/>
+        <MODULEPATH id="juce_data_structures"/>
+        <MODULEPATH id="juce_cryptography"/>
+        <MODULEPATH id="juce_core"/>
+        <MODULEPATH id="juce_audio_utils"/>
+        <MODULEPATH id="juce_audio_processors"/>
+        <MODULEPATH id="juce_audio_plugin_client"/>
+        <MODULEPATH id="juce_audio_formats"/>
+        <MODULEPATH id="juce_audio_devices"/>
+        <MODULEPATH id="juce_audio_basics"/>
+      </MODULEPATHS>
+    </VS2017>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" osxArchitecture="64BitIntel" targetName="Gamelanizer - Debug"/>
+        <CONFIGURATION isDebug="0" name="Release" osxArchitecture="64BitIntel" targetName="Gamelanizer"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_opengl" path="../../juce"/>
+        <MODULEPATH id="juce_gui_extra" path="../../juce"/>
+        <MODULEPATH id="juce_gui_basics" path="../../juce"/>
+        <MODULEPATH id="juce_graphics" path="../../juce"/>
+        <MODULEPATH id="juce_events" path="../../juce"/>
+        <MODULEPATH id="juce_dsp" path="../../juce"/>
+        <MODULEPATH id="juce_data_structures" path="../../juce"/>
+        <MODULEPATH id="juce_cryptography" path="../../juce"/>
+        <MODULEPATH id="juce_core" path="../../juce"/>
+        <MODULEPATH id="juce_audio_utils" path="../../juce"/>
+        <MODULEPATH id="juce_audio_processors" path="../../juce"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../juce"/>
+        <MODULEPATH id="juce_audio_formats" path="../../juce"/>
+        <MODULEPATH id="juce_audio_devices" path="../../juce"/>
+        <MODULEPATH id="juce_audio_basics" path="../../juce"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_opengl" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <WINDOWS/>
+    <OSX/>
+  </LIVE_SETTINGS>
+  <JUCEOPTIONS JUCE_VST3_CAN_REPLACE_VST2="0" JUCE_STRICT_REFCOUNTEDPOINTER="1"
+               JUCE_DSP_USE_INTEL_MKL="0"/>
+</JUCERPROJECT>
