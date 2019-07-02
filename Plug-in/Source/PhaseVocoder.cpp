@@ -24,9 +24,9 @@
 #include "ModuloSameSignAsDivisor.h"
 #include "WindowingFunctions.h"
 //==============================================================================
-PhaseVocoder::PhaseVocoder() : fft(fftOrder)
+PhaseVocoder::PhaseVocoder()
 {
-    WindowingFunctions::fillWithNonsymmetricHannWindow(fftWindow.window, fftSize);
+    WindowingFunctions::fillWithNonsymmetricHannWindow(fft.window.data, fftSize);
 
     resampler.interpolator.reset();
 }
@@ -59,7 +59,7 @@ void PhaseVocoder::setParams(const float newPitchShiftFactor, const float newPit
 
     resampler.maxNeedSamples = calculateMaximumNeededNumSamples(AnalysisFrames::analysisHopSize, oldPitchShiftFactor);
 
-    fftWindow.amplitudeCompensationScale = static_cast<float>(synthesisHopSize / FftWindow::squaredWindowSum);
+    fft.window.amplitudeCompensationScale = static_cast<float>(synthesisHopSize / FftStruct::FftWindow::squaredWindowSum);
 }
 
 void PhaseVocoder::loadNextParams()
@@ -107,7 +107,7 @@ void PhaseVocoder::popUsedSamples(const int numUsed)
     resampler.queue.writePosition -= numUsed;
 }
 
-void PhaseVocoder::pushAnalysisHopOnToFftQueue()
+void PhaseVocoder::pushResampledHopOnToAnalysisFrameBuffer()
 {
     for (auto sampleValue : resampler.resamplerAnalysisHopBuffer)
     {
@@ -117,20 +117,20 @@ void PhaseVocoder::pushAnalysisHopOnToFftQueue()
         {
             // wrap around
             analysisFrames.writePosition = 0;
-            // flag that its been filled once. (this will stay true until the PV is reset)
+            // flag that its been filled once. (this will stay true until the PV is reset at a beat boundary)
             analysisFrames.initialized = true;
         }
     }
 }
 
-void PhaseVocoder::copyFftQueueToFftInOut()
+void PhaseVocoder::copyAnalysisFrameToFftInOut()
 {
     for (auto i = 0; i < fftSize; ++i)
     {
         const auto index = analysisFrames.writePosition - fftSize + i;
         const auto fftQueueIndexRewound = ModuloSameSignAsDivisor::modInt(index, fftSize);
         jassert(fftQueueIndexRewound < fftSize && fftQueueIndexRewound >= 0);
-        fftInOut[i] = analysisFrames.circularBuffer[fftQueueIndexRewound];
+        fft.inOut[i] = analysisFrames.circularBuffer[fftQueueIndexRewound];
     }
 }
 
@@ -139,7 +139,7 @@ void PhaseVocoder::storePhasesInBuffer()
     // this is the first frame we've processed of this beat, so just store the phases without scaling them
 
     // reinterpret_cast the fft buffer to complex
-    auto* complexBins = reinterpret_cast<std::complex<float>*>(fftInOut);
+    auto* complexBins = reinterpret_cast<std::complex<float>*>(fft.inOut);
 
     for (auto k = 0; k < nComplexBins; ++k)
     {
@@ -155,7 +155,7 @@ void PhaseVocoder::storePhasesInBuffer()
 void PhaseVocoder::scaleAllFrequencyBinsAndStorePhaseBuffers()
 {
     // reinterpret_cast the fft buffer to complex
-    auto* complexBins = reinterpret_cast<std::complex<float>*>(fftInOut);
+    auto* complexBins = reinterpret_cast<std::complex<float>*>(fft.inOut);
 
     for (auto k = 0; k < nComplexBins; ++k)
     {
@@ -167,7 +167,7 @@ void PhaseVocoder::scaleAllFrequencyBinsAndStorePhaseBuffers()
         previousFramePhases.unaltered[k] = currentPhase;
         // calculate the magnitudes
         const auto currentMagnitudes = complexBinMag(complexBins[k]);
-        // store the scaled complex bins back on fftInOut
+        // store the scaled complex bins back on inOut
         complexBins[k] = scaleFrequencyBin(k, currentMagnitudes, currentPhase, oldPhase);
     }
 }
@@ -192,13 +192,13 @@ std::complex<float> PhaseVocoder::scaleFrequencyBin(const int k, const float mag
     return std::polar(mag, scaledPhase);
 }
 
-void PhaseVocoder::scaleWhatsOnTheFftQueue()
+void PhaseVocoder::scaleAnalysisFrame()
 {
-    copyFftQueueToFftInOut();
+    copyAnalysisFrameToFftInOut();
     // window fft buffer
-    FloatVectorOperations::multiply(fftInOut, fftWindow.window.data(), fftSize);
+    FloatVectorOperations::multiply(fft.inOut, fft.window.data.data(), fftSize);
     // rfft the fft buffer
-    fft.performRealOnlyForwardTransform(fftInOut, true);
+    fft.instance.performRealOnlyForwardTransform(fft.inOut, true);
 
     if (previousFramePhases.isInitialized)
     {
@@ -213,11 +213,11 @@ void PhaseVocoder::scaleWhatsOnTheFftQueue()
         previousFramePhases.isInitialized = true;
     }
     // inverse rfft the complex bins
-    fft.performRealOnlyInverseTransform(fftInOut);
+    fft.instance.performRealOnlyInverseTransform(fft.inOut);
     // synthesis window
-    FloatVectorOperations::multiply(fftInOut, fftWindow.window.data(), fftSize);
+    FloatVectorOperations::multiply(fft.inOut, fft.window.data.data(), fftSize);
     // amplitude scaling
-    FloatVectorOperations::multiply(fftInOut, fftWindow.amplitudeCompensationScale, fftSize);
+    FloatVectorOperations::multiply(fft.inOut, fft.window.amplitudeCompensationScale, fftSize);
 }
 
 void PhaseVocoder::reset()
@@ -247,12 +247,12 @@ int PhaseVocoder::processSample(const float sampleValue, const bool skipProcessi
     if (resampler.queue.writePosition > resampler.maxNeedSamples)
     {
         resampleHop();
-        pushAnalysisHopOnToFftQueue();
+        pushResampledHopOnToAnalysisFrameBuffer();
         if (analysisFrames.initialized)
         {
             if (!skipProcessing)
             {
-                scaleWhatsOnTheFftQueue();
+                scaleAnalysisFrame();
             }
             // TODO track subsample position ?
             const auto stepSize = static_cast<int>(synthesisHopSize);

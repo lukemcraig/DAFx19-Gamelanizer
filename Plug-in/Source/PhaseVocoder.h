@@ -65,14 +65,14 @@ public:
     void fullReset();
 
     /**
-     * \brief Push a single sample onto the resampler queue and possibly process a frame if possible.
+     * \brief Push a single sample onto the resampler queue and resample a hop and process a frame if possible.
      * \param sampleValue The audio data
      * \param skipProcessing True if this is just being called to get the state of the array indexes where they should be 
-     * \return 0 if no new data available. Hop size if a new frame is available on fftInOut.
+     * \return 0 if no new data available. Hop size if a new frame is available on inOut.
      */
     int processSample(float sampleValue, bool skipProcessing);
 
-    const float* getFftInOutReadPointer() const { return fftInOut; }
+    const float* getFftInOutReadPointer() const { return fft.inOut; }
     static int getFftSize() { return fftSize; }
     //==============================================================================
 private:
@@ -109,7 +109,7 @@ private:
 
         /**
          * \brief The circular buffer for the (overlapping) time-domain frames that the resampler outputs.
-         * Its data will be unwrapped onto fftInOut every new hop.
+         * Its data will be unwrapped onto inOut every new hop.
          */
         std::array<float, fftSize> circularBuffer{};
 
@@ -126,7 +126,7 @@ private:
 
     //==============================================================================
     /**
-     * \brief This length is based on calculateMaximumNeededNumSamples. 
+     * \brief This length is based on #calculateMaximumNeededNumSamples. 
      * TODO (It actually could be smaller if we knew the level number)
      */
     static constexpr int resamplerLength = (GamelanizerConstants::maxLevels << 2) * AnalysisFrames::analysisHopSize
@@ -171,7 +171,6 @@ private:
      */
     std::atomic<float> nextPitchShiftFactorCents{};
 
-
     //==============================================================================
     /**
      * \brief Data related to the resampler that is used for pitch shifting
@@ -212,42 +211,47 @@ private:
         float resamplerAnalysisHopBuffer[AnalysisFrames::analysisHopSize]{};
     } resampler;
 
-    //==============================================================================
-
     /**
-     * \brief The Fast Fourier Transform object.
+     * \brief The FFT object and related data
      */
-    dsp::FFT fft;
-
-    /**
-     * \brief The Hann Window and its #amplitudeCompensationScale factor
-     */
-    struct FftWindow
+    struct FftStruct
     {
         /**
-         * \brief The Hann Window that's applied to time-domain frames
-         *
+         * \brief The Fast Fourier Transform object.
          */
-        std::array<float, fftSize> window{};
+        dsp::FFT instance{fftOrder};
 
         /**
-         * \brief the sum of the squared non-symmetric Hann window. Used to calculate #amplitudeCompensationScale
+         * \brief The time-domain data and the complex frequency domain data will both be on here.
+         * It has to be twice the fftSize in order to work with JUCE's FFT class. 
+         * The time domain data will occupy the first half and the complex data will occupy 
+         * the whole thing after forward transforming.
+         * reinterpret_cast is used on this. 
          */
-        static constexpr double squaredWindowSum = fftSize * .375;
+        float inOut[2 * fftSize]{};
 
         /**
-         * \brief Amplitude scaling factor based on the window
+         * \brief The Hann Window and its #amplitudeCompensationScale factor
          */
-        float amplitudeCompensationScale{};
-    } fftWindow;
+        struct FftWindow
+        {
+            /**
+             * \brief The Hann Window that's applied to time-domain frames
+             *
+             */
+            std::array<float, fftSize> data{};
 
-    /**
-     * \brief The time-domain data and the complex frequency domain data will both be on here.
-     * It has to be twice the fftSize in order to work with JUCE's FFT class. 
-     * The time domain data will occupy the first half and the complex data will occupy the whole thing after FFTing.
-     * reinterpret_cast is used on this. 
-     */
-    float fftInOut[2 * fftSize]{};
+            /**
+             * \brief the sum of the squared non-symmetric Hann window. Used to calculate #amplitudeCompensationScale
+             */
+            static constexpr double squaredWindowSum = fftSize * .375;
+
+            /**
+             * \brief Amplitude scaling factor based on the window
+             */
+            float amplitudeCompensationScale{};
+        } window;
+    } fft;
 
     /**
      * \brief Data related to the phases of the previous frame
@@ -256,14 +260,14 @@ private:
     {
         /**
          * \brief The unaltered phases of the previous frame.
-         * todo std::array?
          */
-        float unaltered[nComplexBins]{};
+        std::array<float, nComplexBins> unaltered{};
+
         /**
          * \brief The scaled phases of the previous frame.
-         * todo std::array?
          */
-        float scaled[nComplexBins]{};
+        std::array<float, nComplexBins> scaled{};
+
         /**
          * \brief False for the first frame of every beat
          */
@@ -273,15 +277,16 @@ private:
     //==============================================================================
     void setParams(const float newPitchShiftFactor, const float newPitchShiftFactorCents);
     int calculateMaximumNeededNumSamples(int desiredNumOut, double oldPitchShiftFactor) const;
+    //==============================================================================
     void resampleHop();
     void popUsedSamples(int numUsed);
-    void pushAnalysisHopOnToFftQueue();
+    void pushResampledHopOnToAnalysisFrameBuffer();
     //==============================================================================
-    void copyFftQueueToFftInOut();
+    void scaleAnalysisFrame();
+    void copyAnalysisFrameToFftInOut();
     void scaleAllFrequencyBinsAndStorePhaseBuffers();
     std::complex<float> scaleFrequencyBin(int k, float mag, float currentPhase, float oldPhase);
     void storePhasesInBuffer();
-    void scaleWhatsOnTheFftQueue();
     //==============================================================================
     static float complexBinPhase(const std::complex<float>& complexBin);
     static float complexBinMag(const std::complex<float>& complexBin);

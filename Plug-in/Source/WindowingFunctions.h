@@ -33,10 +33,10 @@ struct WindowingFunctions
      * \param x The input argument to evaluate (the position along the window) .
      * \param length The length of the window.
      * \param alpha 0 is rectangular (no windowing). 1 is a Hann window.
-     * \return 
-     * \url https://en.wikipedia.org/wiki/Window_function#Tukey_window
-     * \url https://www.mathworks.com/help/signal/ref/tukeywin.html
-     * \url http://web.mit.edu/xiphmont/Public/windows.pdf
+     * \return a point on the window at position x
+     * \see https://en.wikipedia.org/wiki/Window_function#Tukey_window
+     * \see https://www.mathworks.com/help/signal/ref/tukeywin.html
+     * \see http://web.mit.edu/xiphmont/Public/windows.pdf
      */
     static float tukeyWindow(int x, int length, float alpha);
 
@@ -45,7 +45,7 @@ struct WindowingFunctions
      * \param window The array to fill.
      * \param fftSize The FFT length. Make it window.size() -1 to make it symmetric.
      * 
-     * \url https://en.wikipedia.org/wiki/Hann_function
+     * \see https://en.wikipedia.org/wiki/Hann_function
      */
     template <typename T, std::size_t Size>
     static void fillWithNonsymmetricHannWindow(std::array<T, Size>& window, int fftSize)

@@ -31,13 +31,13 @@
 /**
  * \brief The GUI for the plug-in
  */
-class Gamelanizer2AudioProcessorEditor : public AudioProcessorEditor,
+class GamelanizerAudioProcessorEditor : public AudioProcessorEditor,
                                          public TextEditor::Listener,
                                          public Timer
 {
 public:
-    Gamelanizer2AudioProcessorEditor(GamelanizerAudioProcessor&, AudioProcessorValueTreeState&, GamelanizerParameters&);
-    ~Gamelanizer2AudioProcessorEditor();
+    GamelanizerAudioProcessorEditor(GamelanizerAudioProcessor&, AudioProcessorValueTreeState&, GamelanizerParameters&);
+    ~GamelanizerAudioProcessorEditor();
 
     //==============================================================================
     void paint(Graphics&) override;
@@ -103,5 +103,5 @@ private:
     //==============================================================================
     void updateProcessorTempo();
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Gamelanizer2AudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GamelanizerAudioProcessorEditor)
 };

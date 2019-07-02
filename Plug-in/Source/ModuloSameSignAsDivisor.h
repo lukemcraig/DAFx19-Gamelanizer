@@ -27,9 +27,9 @@
  * This behaves the same as Python's % (modulo) operator and Matlab's mod().
  * It behaves differently from std::mod, std::remainder, and the C++ % operator.
  * 
- * \url https://stackoverflow.com/questions/1907565/c-and-python-different-behaviour-of-the-modulo-operation
- * \url https://www.mathworks.com/help/matlab/ref/mod.html
- * \url https://docs.scipy.org/doc/numpy/reference/generated/numpy.mod.html
+ * \see https://stackoverflow.com/questions/1907565/c-and-python-different-behaviour-of-the-modulo-operation
+ * \see https://www.mathworks.com/help/matlab/ref/mod.html
+ * \see https://docs.scipy.org/doc/numpy/reference/generated/numpy.mod.html
  */
 struct ModuloSameSignAsDivisor
 {

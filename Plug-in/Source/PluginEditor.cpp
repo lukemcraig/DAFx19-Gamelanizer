@@ -23,7 +23,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-Gamelanizer2AudioProcessorEditor::Gamelanizer2AudioProcessorEditor(GamelanizerAudioProcessor& p,
+GamelanizerAudioProcessorEditor::GamelanizerAudioProcessorEditor(GamelanizerAudioProcessor& p,
                                                                    AudioProcessorValueTreeState& vts,
                                                                    GamelanizerParameters& gp)
     : AudioProcessorEditor(&p), processor(p), gamelanizerParameters(gp), valueTreeState(vts)
@@ -40,7 +40,7 @@ Gamelanizer2AudioProcessorEditor::Gamelanizer2AudioProcessorEditor(GamelanizerAu
     addAndMakeVisible(nameLabel);
 
     aboutButton.setButtonText("?");
-    // TODO licensing info?
+
     // TODO Async?
     aboutButton.onClick = [this]
     {
@@ -189,7 +189,7 @@ Gamelanizer2AudioProcessorEditor::Gamelanizer2AudioProcessorEditor(GamelanizerAu
     setSize(1200, 500);
 }
 
-Gamelanizer2AudioProcessorEditor::~Gamelanizer2AudioProcessorEditor()
+GamelanizerAudioProcessorEditor::~GamelanizerAudioProcessorEditor()
 {
     stopTimer();
     setLookAndFeel(nullptr);
@@ -197,7 +197,7 @@ Gamelanizer2AudioProcessorEditor::~Gamelanizer2AudioProcessorEditor()
 }
 
 //==============================================================================
-void Gamelanizer2AudioProcessorEditor::paint(Graphics& g)
+void GamelanizerAudioProcessorEditor::paint(Graphics& g)
 {
     g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
 
@@ -206,7 +206,7 @@ void Gamelanizer2AudioProcessorEditor::paint(Graphics& g)
     g.strokePath(titlePath, PathStrokeType(0.5f));
 }
 
-void Gamelanizer2AudioProcessorEditor::resized()
+void GamelanizerAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced(10);
     auto titleArea = area.removeFromTop(32);
@@ -275,13 +275,13 @@ void Gamelanizer2AudioProcessorEditor::resized()
 
 //==============================================================================
 
-void Gamelanizer2AudioProcessorEditor::timerCallback()
+void GamelanizerAudioProcessorEditor::timerCallback()
 {
     // disable the tempo field if the DAW is playing    
     tempoEditor.setEnabled(!processor.getHostIsPlaying());
 }
 
-void Gamelanizer2AudioProcessorEditor::updateProcessorTempo()
+void GamelanizerAudioProcessorEditor::updateProcessorTempo()
 {
     auto newBpm = tempoEditor.getText().getFloatValue();
 	newBpm = jmin(newBpm, GamelanizerConstants::maxBpm);
@@ -290,7 +290,7 @@ void Gamelanizer2AudioProcessorEditor::updateProcessorTempo()
     processor.setCurrentBpm(newBpm);
 }
 
-void Gamelanizer2AudioProcessorEditor::textEditorFocusLost(TextEditor& textEditor)
+void GamelanizerAudioProcessorEditor::textEditorFocusLost(TextEditor& textEditor)
 {
     if (&textEditor == &tempoEditor)
     {
@@ -298,7 +298,7 @@ void Gamelanizer2AudioProcessorEditor::textEditorFocusLost(TextEditor& textEdito
     }
 }
 
-void Gamelanizer2AudioProcessorEditor::textEditorEscapeKeyPressed(TextEditor& textEditor)
+void GamelanizerAudioProcessorEditor::textEditorEscapeKeyPressed(TextEditor& textEditor)
 {
     if (&textEditor == &tempoEditor)
     {
@@ -306,7 +306,7 @@ void Gamelanizer2AudioProcessorEditor::textEditorEscapeKeyPressed(TextEditor& te
     }
 }
 
-void Gamelanizer2AudioProcessorEditor::textEditorReturnKeyPressed(TextEditor& textEditor)
+void GamelanizerAudioProcessorEditor::textEditorReturnKeyPressed(TextEditor& textEditor)
 {
     if (&textEditor == &tempoEditor)
     {

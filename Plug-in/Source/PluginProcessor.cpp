@@ -37,16 +37,12 @@ GamelanizerAudioProcessor::GamelanizerAudioProcessor()
       gamelanizerParametersVtsHelper(audioProcessorValueTreeState, gamelanizerParameters)
 {
     for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
-    {
         hpFilters[i].parameters->type = dsp::StateVariableFilter::Parameters<float>::Type::highPass;
-    }
-
-    currentBpm.store(120);
 
     for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
-    {
-        powers[i] = static_cast<int>(std::pow(2, i + 1));
-    }
+        levelPowers[i] = static_cast<int>(std::pow(2, i + 1));
+
+    currentBpm.store(120);
 
     jassert(currentBpm.is_lock_free());
     jassert(hostIsPlaying.is_lock_free());
@@ -67,13 +63,13 @@ void GamelanizerAudioProcessor::prepareToPlay(const double sampleRate, const int
 
     const auto maxSamplesPerBeat = static_cast<int>(std::ceil(sampleRate * (60.0 / GamelanizerConstants::minBpm)));
 
-    // maxLatency can be slightly smaller depending on initWAndDelayMethod but this should always be enough
+    // maxLatency could be slightly smaller depending on initWriteHeadsAndLatencyMethod but this should always be enough
     const auto maxLatency = (maxSamplesPerBeat * 3) + 1;
-    delayBuffer.setSize(1, maxLatency);
-    delayBuffer.clear();
+    baseDelayBuffer.data.setSize(1, maxLatency);
+    baseDelayBuffer.data.clear();
 
-    outputBuffer.setSize(GamelanizerConstants::maxLevels, maxSamplesPerBeat * 4);
-    outputBuffer.clear();
+    levelsOutputBuffer.data.setSize(GamelanizerConstants::maxLevels, maxSamplesPerBeat * 4);
+    levelsOutputBuffer.data.clear();
 
     gamelanizerParametersVtsHelper.resetSmoothers(sampleRate);
 
@@ -84,17 +80,8 @@ void GamelanizerAudioProcessor::prepareToPlay(const double sampleRate, const int
     prepareSamplesPerBeat();
 }
 
-void GamelanizerAudioProcessor::releaseResources()
-{
-    hostIsPlaying.store(false);
-    // free up the memory allocated to the buffers
-    delayBuffer.setSize(0, 0);
-    outputBuffer.setSize(0, 0);
-}
-
 void GamelanizerAudioProcessor::reset()
 {
-    hostIsPlaying.store(false);
     for (auto& filter : lpFilters)
     {
         filter.reset();
@@ -125,7 +112,7 @@ void GamelanizerAudioProcessor::initAllPhaseVocoders()
     {
         const auto pitchParam = gamelanizerParametersVtsHelper.getPitch(level, false);
         const auto pitchShiftFactor = std::pow(2.0, pitchParam.value / 1200.0);
-        const auto timeScaleFactor = 1.0 / powers[level];
+        const auto timeScaleFactor = 1.0 / levelPowers[level];
         pvs[level].initParams(static_cast<float>(pitchShiftFactor), static_cast<float>(timeScaleFactor));
     }
 }
@@ -150,8 +137,8 @@ bool GamelanizerAudioProcessor::handleNotPlaying(const AudioPlayHead::CurrentPos
             // set the internal state to match the DAW
             hostIsPlaying.store(false);
             // clear out the data that was written to the internal buffers
-            delayBuffer.clear();
-            outputBuffer.clear();
+            baseDelayBuffer.data.clear();
+            levelsOutputBuffer.data.clear();
         }
         // since the host isn't playing let the calling method know to return early
         return true;
@@ -166,8 +153,8 @@ void GamelanizerAudioProcessor::handleTimelineJump(const int64 hostTimeInSamples
     {
         // if hostIsPlaying but hostSamples != hostSampleOughtToBe, that means the user jumped on the timeline
         // so clear the buffers
-        delayBuffer.clear();
-        outputBuffer.clear();
+        baseDelayBuffer.data.clear();
+        levelsOutputBuffer.data.clear();
     }
 }
 
@@ -215,11 +202,11 @@ bool GamelanizerAudioProcessor::handleTimelineStateChange()
                 // reset/update the internal state
                 hostIsPlaying.store(true);
                 hostSampleOughtToBe = 0;
-                outReadPos = 0;
+                levelsOutputBuffer.readPosition = 0;
                 beatSampleInfo.reset(samplesPerBeatFractional);
-                updateLevelSampleWidths();
+                initLevelNoteSampleLengths();
                 initWritePositions();
-                dlyWritePos = 0;
+                baseDelayBuffer.writePosition = 0;
                 initDlyReadPos();
 
                 for (auto& pv : pvs)
@@ -263,8 +250,8 @@ void GamelanizerAudioProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuf
 
     // actual processing	
     auto* monoInputRead = buffer.getReadPointer(0);
-    auto* monoDelayBufferWrite = delayBuffer.getWritePointer(0);
-    auto* outputBufferWrite = outputBuffer.getArrayOfWritePointers();
+    auto* monoDelayBufferWrite = baseDelayBuffer.data.getWritePointer(0);
+    auto* outputBufferWrite = levelsOutputBuffer.data.getArrayOfWritePointers();
     auto* multiOutWrite = buffer.getArrayOfWritePointers();
     processSamples(numSamples, monoInputRead, monoDelayBufferWrite, multiOutWrite, outputBufferWrite, false);
 }
@@ -283,7 +270,7 @@ void GamelanizerAudioProcessor::updateHpFilter(const int level)
         hpFilters[level].parameters->setCutOffFrequency(hostSampleRate, jmin(nyquist, hpFilterCutoff.value));
 }
 
-void GamelanizerAudioProcessor::processSamples(const int64 numSamples, const float* monoDelayBufferWrite,
+void GamelanizerAudioProcessor::processSamples(const int64 numSamples, const float* baseDelayBufferWrite,
                                                float* dlyBufferData,
                                                float** multiOutWrite, float** outputBufferWrite,
                                                const bool skipProcessing)
@@ -301,14 +288,14 @@ void GamelanizerAudioProcessor::processSamples(const int64 numSamples, const flo
         else
         {
             // store new input sample into delay buffer
-            dlyBufferData[dlyWritePos] = monoDelayBufferWrite[sample];
+            dlyBufferData[baseDelayBuffer.writePosition] = baseDelayBufferWrite[sample];
 
-            const auto sampleData = monoDelayBufferWrite[sample];
+            const auto sampleData = baseDelayBufferWrite[sample];
 
             // have to apply gain changes here to get it to sync with automation
             const auto baseGain = gamelanizerParametersVtsHelper.getGain(0)
                 * (1.0f - gamelanizerParametersVtsHelper.getMute(0));
-            const auto baseOutput = dlyBufferData[dlyReadPos] * baseGain;
+            const auto baseOutput = dlyBufferData[baseDelayBuffer.readPosition] * baseGain;
             const auto basePanAmplitude = gamelanizerParametersVtsHelper.getPan(0) / 200.0f + 0.5f;
 
             // base - stereo out
@@ -325,7 +312,7 @@ void GamelanizerAudioProcessor::processSamples(const int64 numSamples, const flo
                 // +1 is because base level is stored in this too
                 const auto levelGain = gamelanizerParametersVtsHelper.getGain(level + 1)
                     * (1.0f - gamelanizerParametersVtsHelper.getMute(level + 1));
-                const auto levelOutput = outputBufferWrite[level][outReadPos] * levelGain;
+                const auto levelOutput = outputBufferWrite[level][levelsOutputBuffer.readPosition] * levelGain;
 
                 updateLpFilter(level);
                 updateHpFilter(level);
@@ -342,7 +329,7 @@ void GamelanizerAudioProcessor::processSamples(const int64 numSamples, const flo
                     multiOutWrite[level + 3][sample] = levelOutputFiltered;
 
                 // erase head so the circular buffer can overlap when it wraps around 
-                outputBufferWrite[level][outReadPos] = 0.0f;
+                outputBufferWrite[level][levelsOutputBuffer.readPosition] = 0.0f;
 
                 // =========================
 
@@ -362,18 +349,18 @@ void GamelanizerAudioProcessor::processSamples(const int64 numSamples, const flo
             beatSampleInfo.incrementSamplesIntoBeat();
 
         // update indices		
-        ++outReadPos;
-        ++dlyWritePos;
-        ++dlyReadPos;
+        ++levelsOutputBuffer.readPosition;
+        ++baseDelayBuffer.writePosition;
+        ++baseDelayBuffer.readPosition;
         // circle indices back around
-        if (outReadPos == outputBuffer.getNumSamples())
-            outReadPos = 0;
+        if (levelsOutputBuffer.readPosition == levelsOutputBuffer.data.getNumSamples())
+            levelsOutputBuffer.readPosition = 0;
 
-        if (dlyWritePos == delayBuffer.getNumSamples())
-            dlyWritePos = 0;
+        if (baseDelayBuffer.writePosition == baseDelayBuffer.data.getNumSamples())
+            baseDelayBuffer.writePosition = 0;
 
-        if (dlyReadPos == delayBuffer.getNumSamples())
-            dlyReadPos = 0;
+        if (baseDelayBuffer.readPosition == baseDelayBuffer.data.getNumSamples())
+            baseDelayBuffer.readPosition = 0;
 
         ++hostSampleOughtToBe;
     }
@@ -393,7 +380,7 @@ void GamelanizerAudioProcessor::processSample(const int level, const float sampl
     {
         if (!skipProcessing)
         {
-            addSamplesToOutputBuffer(level, pv->getFftInOutReadPointer(), PhaseVocoder::getFftSize());
+            addSamplesToLevelsOutputBuffer(level, pv->getFftInOutReadPointer(), PhaseVocoder::getFftSize());
             pv->loadNextParams();
         }
         levelWritePositions[level] += hop;
@@ -402,10 +389,10 @@ void GamelanizerAudioProcessor::processSample(const int level, const float sampl
 }
 
 //==============================================================================
-void GamelanizerAudioProcessor::addSamplesToOutputBuffer(const int level, const float* samples,
+void GamelanizerAudioProcessor::addSamplesToLevelsOutputBuffer(const int level, const float* samples,
                                                          const int nSamples)
 {
-    const auto power = powers[level];
+    const auto power = levelPowers[level];
     const auto noteLength = static_cast<double>(beatSampleInfo.getBeatSampleLength()) / power;
     const auto twoNoteLengths = noteLength * 2;
 
@@ -416,7 +403,7 @@ void GamelanizerAudioProcessor::addSamplesToOutputBuffer(const int level, const 
         if (shouldDropThisNote(level, i))
             continue;
 
-        const auto outBufLength = outputBuffer.getNumSamples();
+        const auto outBufLength = levelsOutputBuffer.data.getNumSamples();
         // multiple write heads for each copy of the scaled beat, depending on the subdivision lvl;
         const auto writeHead = (levelWritePositions[level] + static_cast<int>(twoNoteLengths * i)) % outBufLength;
         jassert(writeHead >= 0);
@@ -430,23 +417,23 @@ void GamelanizerAudioProcessor::addSamplesToOutputBuffer(const int level, const 
             jassert(nSamplesLeft > 0);
             jassert(nSamplesLeft < nSamples);
             // make sure we aren't writing past the read head
-            if (writeHead < outReadPos)
+            if (writeHead < levelsOutputBuffer.readPosition)
             {
                 //TODO <= ?
-                jassert(writeHead + nSamplesLeft < outReadPos);
+                jassert(writeHead + nSamplesLeft < levelsOutputBuffer.readPosition);
             }
-            outputBuffer.addFrom(level, writeHead, samples, nSamplesLeft);
+            levelsOutputBuffer.data.addFrom(level, writeHead, samples, nSamplesLeft);
             // number of samples on the right part of the samples array
             const auto nSamplesRight = nSamples - nSamplesLeft;
             jassert(nSamplesRight > 0);
             jassert(nSamplesRight < nSamples);
             // make sure we aren't writing past the read head
-            jassert(nSamplesLeft + nSamplesRight < outReadPos);
-            outputBuffer.addFrom(level, 0, samples + nSamplesLeft, nSamplesRight);
+            jassert(nSamplesLeft + nSamplesRight < levelsOutputBuffer.readPosition);
+            levelsOutputBuffer.data.addFrom(level, 0, samples + nSamplesLeft, nSamplesRight);
         }
         else
         {
-            outputBuffer.addFrom(level, writeHead, samples, nSamples);
+            levelsOutputBuffer.data.addFrom(level, writeHead, samples, nSamples);
         }
     }
 }
@@ -478,7 +465,6 @@ bool GamelanizerAudioProcessor::shouldDropThisNote(const int level, const int co
 
 void GamelanizerAudioProcessor::moveWritePosOnBeatB()
 {
-    // only call this method at the END of beat b 
     for (auto level = 0; level < GamelanizerConstants::maxLevels; ++level)
     {
         // we have to add 2 because we're starting from 0. If we counted the base level as 0, we would only add 1
@@ -486,7 +472,7 @@ void GamelanizerAudioProcessor::moveWritePosOnBeatB()
         // by now, the lead write head is at the end of the 2nd note, so we don't have to jump past those 2 notes
         const auto numberOfNotesToJumpOver = numberNotesInThisLvlEqualToTwoInTheOriginal - 2;
 
-        const auto beatLengthScaled = static_cast<double>(beatSampleInfo.getBeatSampleLength()) / powers[level];
+        const auto beatLengthScaled = static_cast<double>(beatSampleInfo.getBeatSampleLength()) / levelPowers[level];
         // TODO sub sample?
         const auto samplesToJump = static_cast<int>(beatLengthScaled * numberOfNotesToJumpOver);
         levelWritePositions[level] += samplesToJump;
@@ -508,6 +494,7 @@ void GamelanizerAudioProcessor::fastForwardWriteHeadsToNextBeat()
 void GamelanizerAudioProcessor::nextBeat()
 {
     fastForwardWriteHeadsToNextBeat();
+
     //reset all phase vocoders
     for (auto& pv : pvs)
         pv.reset();
@@ -519,9 +506,9 @@ void GamelanizerAudioProcessor::nextBeat()
 }
 
 //==============================================================================
-int GamelanizerAudioProcessor::getLatencyNeeded()
+int GamelanizerAudioProcessor::calculateLatencyNeeded()
 {
-    switch (initWAndDelayMethod)
+    switch (initWriteHeadsAndLatencyMethod)
     {
     case threeBeats:
         return static_cast<int>(std::ceil(3 * samplesPerBeatFractional));
@@ -541,14 +528,14 @@ int GamelanizerAudioProcessor::getLatencyNeeded()
 
 void GamelanizerAudioProcessor::initDlyReadPos()
 {
-    const auto delayTime = getLatencyNeeded();
+    const auto delayTime = calculateLatencyNeeded();
 
-    const auto dlyOutReadPosUnwrapped = dlyWritePos - delayTime;
-    const auto delayBufferLength = delayBuffer.getNumSamples();
+    const auto dlyOutReadPosUnwrapped = baseDelayBuffer.writePosition - delayTime;
+    const auto delayBufferLength = baseDelayBuffer.data.getNumSamples();
     jassert(delayTime < delayBufferLength);
 
     // wrap the read position
-    dlyReadPos = ModuloSameSignAsDivisor::modInt(dlyOutReadPosUnwrapped, delayBufferLength);
+    baseDelayBuffer.readPosition = ModuloSameSignAsDivisor::modInt(dlyOutReadPosUnwrapped, delayBufferLength);
 
     // TODO it would be better to call this only in prepareToPlay, with a maximum, and then set another delay here
     setLatencySamples(delayTime);
@@ -558,7 +545,7 @@ void GamelanizerAudioProcessor::initWritePositions()
 {
     // TODO sub sample rounding stuff
     const auto twoBeats = static_cast<int>(std::round(samplesPerBeatFractional * 2));
-    switch (initWAndDelayMethod)
+    switch (initWriteHeadsAndLatencyMethod)
     {
     case threeBeats:
         {
@@ -598,7 +585,7 @@ void GamelanizerAudioProcessor::initWritePositions()
 
 //==============================================================================
 
-void GamelanizerAudioProcessor::updateLevelSampleWidths()
+void GamelanizerAudioProcessor::initLevelNoteSampleLengths()
 {
     // TODO sub sample
     for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
@@ -625,7 +612,6 @@ void GamelanizerAudioProcessor::prepareFilters(const double sampleRate, const in
 
 void GamelanizerAudioProcessor::snapFiltersToZero()
 {
-    // prevent instability
     for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
         lpFilters[i].snapToZero();
 
@@ -656,7 +642,7 @@ void GamelanizerAudioProcessor::setStateInformation(const void* data, const int 
         {
             const auto newState = ValueTree::fromXml(*xmlState);
             audioProcessorValueTreeState.replaceState(newState);
-            // because setStateInformation will be called after gamelanizerParametersVtsHelper is constructed, 
+            // because #setStateInformation will be called after #gamelanizerParametersVtsHelper is constructed, 
             // we need to force the smoothers to be at the correct values again
             gamelanizerParametersVtsHelper.instantlyUpdateSmoothers();
         }
@@ -667,7 +653,7 @@ void GamelanizerAudioProcessor::setStateInformation(const void* data, const int 
 AudioProcessorEditor* GamelanizerAudioProcessor::createEditor()
 {
     //return new GenericAudioProcessorEditor(this);
-    return new Gamelanizer2AudioProcessorEditor(*this, audioProcessorValueTreeState, gamelanizerParameters);
+    return new GamelanizerAudioProcessorEditor(*this, audioProcessorValueTreeState, gamelanizerParameters);
 }
 
 bool GamelanizerAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
@@ -697,4 +683,9 @@ bool GamelanizerAudioProcessor::isBusesLayoutSupported(const BusesLayout& layout
     return false;
 }
 
-//==============================================================================
+//============================================================================== 
+
+/**
+ * \brief Creates a new instances of the plugin.
+ */
+AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new GamelanizerAudioProcessor(); }
