@@ -58,7 +58,7 @@ public:
     /**
      * \brief Call this at the beginning of each new beat to reinitialize the phases.
      */
-    void reset();
+    void resetBetweenBeats();
     /**
      * \brief Call this at the beginning of playback or if the timeline position jumps around.
      */
@@ -73,6 +73,7 @@ public:
     int processSample(float sampleValue, bool skipProcessing);
 
     const float* getFftInOutReadPointer() const { return fft.inOut; }
+
     static int getFftSize() { return fftSize; }
     //==============================================================================
 private:
@@ -275,22 +276,56 @@ private:
     } previousFramePhases;
 
     //==============================================================================
-    void setParams(const float newPitchShiftFactor, const float newPitchShiftFactorCents);
+    /**
+     * \brief Set new pitch shift factor and related member variables
+     * \param newPitchShiftFactor 
+     * \param newPitchShiftFactorCents 
+     */
+    void setParams(float newPitchShiftFactor, float newPitchShiftFactorCents);
+
+    /**
+     * \brief Calculate the maximum number of samples the resampler might need to produce desiredNumOut
+     * \param desiredNumOut the analysis hop size
+     * \param oldPitchShiftFactor the previous pitch shift factor
+     * \return The maximum number of samples the resampler might need
+     */
     int calculateMaximumNeededNumSamples(int desiredNumOut, double oldPitchShiftFactor) const;
     //==============================================================================
-    void resampleHop();
+    void resampleHop(bool skipProcessing);
+
     void popUsedSamples(int numUsed);
+
     void pushResampledHopOnToAnalysisFrameBuffer();
+
     //==============================================================================
     void scaleAnalysisFrame();
+
     void copyAnalysisFrameToFftInOut();
+
     void scaleAllFrequencyBinsAndStorePhaseBuffers();
+
     std::complex<float> scaleFrequencyBin(int k, float mag, float currentPhase, float oldPhase);
+
+    /**
+     * \brief if this is the first frame we've processed of this beat, just store the phases without scaling them
+     */
     void storePhasesInBuffer();
+
     //==============================================================================
+    /**
+     * \brief Calculate the phase of a complex frequency bin
+     * \return The phase
+     */
     static float complexBinPhase(const std::complex<float>& complexBin);
+
+    /**
+     * \brief Calculate the magnitude of a complex frequency bin
+     * \return The magnitude
+     */
     static float complexBinMag(const std::complex<float>& complexBin);
+
     static float calculateFrequencyDeviation(float oldPhase, float currentPhase, int k);
+
     static float wrapPhase(float phaseIn);
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PhaseVocoder)

@@ -44,7 +44,15 @@ public:
     ~GamelanizerAudioProcessor();
 
     //==============================================================================
+    /**
+     * \brief initialize the time and pitch shift settings of all the subdivision levels 
+     */
     void initAllPhaseVocoders();
+
+    /**
+     * \brief queue the current pitch shift parameter for the subdivision level to change to when it's ready 
+     * \param level the subdivision level
+     */
     void queuePhaseVocoderNextParams(int level);
     //==============================================================================
 

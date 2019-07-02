@@ -276,7 +276,7 @@ void GamelanizerAudioProcessor::processSamples(const int64 numSamples, const flo
                                                const bool skipProcessing)
 {
 #if MeasurePerformance
-    const auto startingTime = performanceMeasures.getNewStartingTime();
+    const auto startingTime = PerformanceMeasures::getNewStartingTime();
 #endif
     for (auto sample = 0; sample < numSamples; ++sample)
     {
@@ -390,7 +390,7 @@ void GamelanizerAudioProcessor::processSample(const int level, const float sampl
 
 //==============================================================================
 void GamelanizerAudioProcessor::addSamplesToLevelsOutputBuffer(const int level, const float* samples,
-                                                         const int nSamples)
+                                                               const int nSamples)
 {
     const auto power = levelPowers[level];
     const auto noteLength = static_cast<double>(beatSampleInfo.getBeatSampleLength()) / power;
@@ -497,7 +497,7 @@ void GamelanizerAudioProcessor::nextBeat()
 
     //reset all phase vocoders
     for (auto& pv : pvs)
-        pv.reset();
+        pv.resetBetweenBeats();
 
     if (beatSampleInfo.isBeatB())
         moveWritePosOnBeatB();
@@ -645,6 +645,9 @@ void GamelanizerAudioProcessor::setStateInformation(const void* data, const int 
             // because #setStateInformation will be called after #gamelanizerParametersVtsHelper is constructed, 
             // we need to force the smoothers to be at the correct values again
             gamelanizerParametersVtsHelper.instantlyUpdateSmoothers();
+            // and then queue those new pitch shift parameters so they'll take effect at the beginning of playback
+            for (auto level = 0; level < GamelanizerConstants::maxLevels; ++level)
+                queuePhaseVocoderNextParams(level);
         }
     }
 }

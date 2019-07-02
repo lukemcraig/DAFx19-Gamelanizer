@@ -59,7 +59,8 @@ void PhaseVocoder::setParams(const float newPitchShiftFactor, const float newPit
 
     resampler.maxNeedSamples = calculateMaximumNeededNumSamples(AnalysisFrames::analysisHopSize, oldPitchShiftFactor);
 
-    fft.window.amplitudeCompensationScale = static_cast<float>(synthesisHopSize / FftStruct::FftWindow::squaredWindowSum);
+    fft.window.amplitudeCompensationScale = static_cast<float>(synthesisHopSize / FftStruct::FftWindow::squaredWindowSum
+    );
 }
 
 void PhaseVocoder::loadNextParams()
@@ -86,11 +87,19 @@ int PhaseVocoder::calculateMaximumNeededNumSamples(const int desiredNumOut, cons
 }
 
 
-void PhaseVocoder::resampleHop()
+void PhaseVocoder::resampleHop(const bool skipProcessing)
 {
-    const auto numUsed = resampler.interpolator.process(pitchShiftFactor, resampler.queue.data.data(),
-                                                        resampler.resamplerAnalysisHopBuffer,
-                                                        AnalysisFrames::analysisHopSize);
+    int numUsed;
+    if (!skipProcessing)
+    {
+        numUsed = resampler.interpolator.process(pitchShiftFactor, resampler.queue.data.data(),
+                                                 resampler.resamplerAnalysisHopBuffer,
+                                                 AnalysisFrames::analysisHopSize);
+    }
+    else
+    {
+        numUsed = static_cast<int>(AnalysisFrames::analysisHopSize * pitchShiftFactor);
+    }
     jassert(numUsed <= resampler.queue.writePosition);
     popUsedSamples(numUsed);
 }
@@ -136,8 +145,6 @@ void PhaseVocoder::copyAnalysisFrameToFftInOut()
 
 void PhaseVocoder::storePhasesInBuffer()
 {
-    // this is the first frame we've processed of this beat, so just store the phases without scaling them
-
     // reinterpret_cast the fft buffer to complex
     auto* complexBins = reinterpret_cast<std::complex<float>*>(fft.inOut);
 
@@ -220,33 +227,31 @@ void PhaseVocoder::scaleAnalysisFrame()
     FloatVectorOperations::multiply(fft.inOut, fft.window.amplitudeCompensationScale, fftSize);
 }
 
-void PhaseVocoder::reset()
+void PhaseVocoder::resetBetweenBeats()
 {
     previousFramePhases.isInitialized = false;
     analysisFrames.initialized = false;
     analysisFrames.writePosition = 0;
     resampler.interpolator.reset();
+    loadNextParams();
 }
 
 void PhaseVocoder::fullReset()
 {
-    // TODO why not in reset?
-    loadNextParams();
-    //TODO why not in reset?
+    // throw away the data on the resampler queue
     resampler.queue.writePosition = 0;
-    reset();
+    resetBetweenBeats();
 }
 
 int PhaseVocoder::processSample(const float sampleValue, const bool skipProcessing)
 {
-    jassert(static_cast<size_t>(resampler.queue.writePosition) < resampler.queue.data.size());
     resampler.queue.data[resampler.queue.writePosition] = sampleValue;
     resampler.queue.writePosition += 1;
 
     // if the number of samples on the queue is at least the number needed to get the desired output length
     if (resampler.queue.writePosition > resampler.maxNeedSamples)
     {
-        resampleHop();
+        resampleHop(skipProcessing);
         pushResampledHopOnToAnalysisFrameBuffer();
         if (analysisFrames.initialized)
         {

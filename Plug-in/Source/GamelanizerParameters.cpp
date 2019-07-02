@@ -25,19 +25,19 @@
 GamelanizerParameters::GamelanizerParameters()
 {
     // initialize parameterId arrays
-    for (int i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
     {
         gainIds[i] = "gain" + String(i);
         muteIds[i] = "mute" + String(i);
         panIds[i] = "pan" + String(i);
     }
-    for (int i = 0; i < GamelanizerConstants::maxLevels; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
     {
         pitchIds[i] = "pitch" + String(i);
         taperIds[i] = "taper" + String(i);
         lpfIds[i] = "lpf" + String(i);
         hpfIds[i] = "hpf" + String(i);
-        for (int j = 0; j < 4; ++j)
+        for (auto j = 0; j < 4; ++j)
             dropIds[i][j] = "drop" + String(i) + "_" + String(j);
     }
 }
@@ -104,7 +104,7 @@ void GamelanizerParameters::addGainsToLayout(std::vector<std::unique_ptr<RangedA
         Decibels::decibelsToGain(-10.0f),
         Decibels::decibelsToGain(-12.0f)
     };
-    for (int i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
     {
         params.push_back(std::make_unique<AudioParameterFloat>(
                 getGainId(i),
@@ -121,7 +121,7 @@ void GamelanizerParameters::addGainsToLayout(std::vector<std::unique_ptr<RangedA
 
 void GamelanizerParameters::addMutesToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params)
 {
-    for (int i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
     {
         params.push_back(std::make_unique<AudioParameterBool>(
                 getMuteId(i),
@@ -147,7 +147,7 @@ void GamelanizerParameters::addPansToLayout(std::vector<std::unique_ptr<RangedAu
         0, -100.0f, 100.0f, -50.0f, 50.0f
     };
 
-    for (int i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
     {
         params.push_back(std::make_unique<AudioParameterFloat>(
                 getPanId(i),
@@ -172,7 +172,7 @@ void GamelanizerParameters::addTapersToLayout(std::vector<std::unique_ptr<Ranged
     std::array<float, GamelanizerConstants::maxLevels> taperDefaults{
         0.0f, 0.0f, 0.1f, 0.2f
     };
-    for (int i = 0; i < GamelanizerConstants::maxLevels; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
     {
         params.push_back(std::make_unique<AudioParameterFloat>(
                 getTaperId(i),
@@ -198,7 +198,7 @@ void GamelanizerParameters::addFiltersToLayout(std::vector<std::unique_ptr<Range
         }
         return String(value, 1) + " Hz";
     };
-    for (int i = 0; i < GamelanizerConstants::maxLevels; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
     {
         params.push_back(std::make_unique<AudioParameterFloat>(
                 getHpfId(i),
@@ -214,7 +214,7 @@ void GamelanizerParameters::addFiltersToLayout(std::vector<std::unique_ptr<Range
     std::array<float, GamelanizerConstants::maxLevels> lpfDefaults{
         10000.0f, 9000.0f, 6000.0f, 5000.0f
     };
-    for (int i = 0; i < GamelanizerConstants::maxLevels; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
     {
         params.push_back(std::make_unique<AudioParameterFloat>(
                 getLpfId(i),
@@ -236,7 +236,7 @@ void GamelanizerParameters::addPitchesToLayout(std::vector<std::unique_ptr<Range
     {
         return String(value, 0) + " cents";
     };
-    for (int i = 0; i < GamelanizerConstants::maxLevels; ++i)
+    for (auto i = 0; i < GamelanizerConstants::maxLevels; ++i)
     {
         params.push_back(std::make_unique<AudioParameterFloat>(
                 getPitchId(i),
