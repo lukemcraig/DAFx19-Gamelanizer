@@ -22,7 +22,7 @@
 
 #include "GamelanizerParametersVTSHelper.h"
 
-GamelanizerParametersVTSHelper::GamelanizerParametersVTSHelper(AudioProcessorValueTreeState& vts,
+GamelanizerParametersVtsHelper::GamelanizerParametersVtsHelper(AudioProcessorValueTreeState& vts,
                                                                GamelanizerParameters& gp) :
     gamelanizerParameters(gp), valueTreeState(vts)
 {
@@ -46,12 +46,8 @@ GamelanizerParametersVTSHelper::GamelanizerParametersVTSHelper(AudioProcessorVal
     instantlyUpdateSmoothers();
 }
 
-GamelanizerParametersVTSHelper::~GamelanizerParametersVTSHelper()
-{
-}
-
 //==============================================================================
-void GamelanizerParametersVTSHelper::resetSmoothers(const double sampleRate)
+void GamelanizerParametersVtsHelper::resetSmoothers(const double sampleRate)
 {
     for (auto& smoother : gainsSmooth)
         smoother.reset(sampleRate, 0.1);
@@ -75,7 +71,7 @@ void GamelanizerParametersVTSHelper::resetSmoothers(const double sampleRate)
         smoother.reset(sampleRate, 0.01);
 }
 
-void GamelanizerParametersVTSHelper::instantlyUpdateSmoothers()
+void GamelanizerParametersVtsHelper::instantlyUpdateSmoothers()
 {
     for (auto i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
         gainsSmooth[i].setCurrentAndTargetValue(*gainParamRawPointers[i]);
@@ -99,7 +95,7 @@ void GamelanizerParametersVTSHelper::instantlyUpdateSmoothers()
         hpfSmooth[i].setCurrentAndTargetValue(*hpfParamRawPointers[i]);
 }
 
-void GamelanizerParametersVTSHelper::updateSmoothers()
+void GamelanizerParametersVtsHelper::updateSmoothers()
 {
     for (auto i = 0; i < GamelanizerConstants::maxLevels + 1; ++i)
         gainsSmooth[i].setTargetValue(*gainParamRawPointers[i]);
@@ -124,15 +120,15 @@ void GamelanizerParametersVTSHelper::updateSmoothers()
 }
 
 //==============================================================================
-float GamelanizerParametersVTSHelper::getGain(const int level) { return gainsSmooth[level].getNextValue(); }
+float GamelanizerParametersVtsHelper::getGain(const int level) { return gainsSmooth[level].getNextValue(); }
 
-float GamelanizerParametersVTSHelper::getPan(const int level) { return pansSmooth[level].getNextValue(); }
+float GamelanizerParametersVtsHelper::getPan(const int level) { return pansSmooth[level].getNextValue(); }
 
-float GamelanizerParametersVTSHelper::getMute(const int level) { return mutesSmooth[level].getNextValue(); }
+float GamelanizerParametersVtsHelper::getMute(const int level) { return mutesSmooth[level].getNextValue(); }
 
-float GamelanizerParametersVTSHelper::getTaper(const int level) { return tapersSmooth[level].getNextValue(); }
+float GamelanizerParametersVtsHelper::getTaper(const int level) { return tapersSmooth[level].getNextValue(); }
 
-GamelanizerParametersVTSHelper::ParameterAndWasChanged GamelanizerParametersVTSHelper::getPitch(
+GamelanizerParametersVtsHelper::ParameterAndWasChanged GamelanizerParametersVtsHelper::getPitch(
     const int level, const bool smoothed)
 {
     if (!smoothed)
@@ -148,7 +144,7 @@ GamelanizerParametersVTSHelper::ParameterAndWasChanged GamelanizerParametersVTSH
     return {nextPitch, nextPitch != previousPitch};
 }
 
-GamelanizerParametersVTSHelper::ParameterAndWasChanged GamelanizerParametersVTSHelper::getLpFilterCutoff(
+GamelanizerParametersVtsHelper::ParameterAndWasChanged GamelanizerParametersVtsHelper::getLpFilterCutoff(
     const int level)
 {
     const auto previousCutoff = lpfPrevious[level];
@@ -166,7 +162,7 @@ GamelanizerParametersVTSHelper::ParameterAndWasChanged GamelanizerParametersVTSH
     return {nextCutoff, previousCutoff != nextCutoff};
 }
 
-GamelanizerParametersVTSHelper::ParameterAndWasChanged GamelanizerParametersVTSHelper::getHpFilterCutoff(
+GamelanizerParametersVtsHelper::ParameterAndWasChanged GamelanizerParametersVtsHelper::getHpFilterCutoff(
     const int level)
 {
     const auto previousCutoff = hpfPrevious[level];
@@ -184,7 +180,7 @@ GamelanizerParametersVTSHelper::ParameterAndWasChanged GamelanizerParametersVTSH
     return {nextCutoff, previousCutoff != nextCutoff};
 }
 
-float GamelanizerParametersVTSHelper::getDropNote(const int level, const int note)
+float GamelanizerParametersVtsHelper::getDropNote(const int level, const int note)
 {
     return *dropParamRawPointers[level][note];
 }

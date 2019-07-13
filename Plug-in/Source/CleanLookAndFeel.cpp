@@ -37,10 +37,8 @@ CleanLookAndFeel::CleanLookAndFeel() : LookAndFeel_V4({
 }
 
 //==============================================================================
-void CleanLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int height,
-                                        float sliderPos,
-                                        float /*minSliderPos*/,
-                                        float /*maxSliderPos*/,
+void CleanLookAndFeel::drawLinearSlider(Graphics& g, const int x, const int y, const int width, const int height,
+                                        const float sliderPos, float /*minSliderPos*/, float /*maxSliderPos*/,
                                         const Slider::SliderStyle /*style*/, Slider& slider)
 {
     // most of this is copied from the overridden library code
@@ -82,18 +80,18 @@ void CleanLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, in
     drawThumbKnob(g, slider, backgroundColour, valueTrackWidth, maxPoint, thumbWidth);
 }
 
-
-void CleanLookAndFeel::drawRotarySlider(Graphics& g, int x, int y, int width, int height, float sliderPos,
-                                        const float rotaryStartAngle, const float rotaryEndAngle, Slider& slider)
+void CleanLookAndFeel::drawRotarySlider(Graphics& g, const int x, const int y, const int width, const int height,
+                                        const float sliderPosProportional, const float rotaryStartAngle,
+                                        const float rotaryEndAngle, Slider& slider)
 {
     // most of this is copied from the overridden library code
     const auto outline = slider.findColour(Slider::rotarySliderOutlineColourId);
     const auto fill = slider.findColour(Slider::rotarySliderFillColourId);
 
-    auto bounds = Rectangle<int>(x, y, width, height).toFloat().reduced(10);
+    const auto bounds = Rectangle<int>(x, y, width, height).toFloat().reduced(10);
 
     const auto radius = jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
-    const auto toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+    const auto toAngle = rotaryStartAngle + sliderPosProportional * (rotaryEndAngle - rotaryStartAngle);
     const auto lineW = jmin(8.0f, radius * 0.5f);
     // changed this
     const auto valueLineW = jmin(valueTrackWidthRotary, radius * 0.5f);
@@ -103,36 +101,15 @@ void CleanLookAndFeel::drawRotarySlider(Graphics& g, int x, int y, int width, in
     {
         const auto centerX = x + width * 0.5f;
         const auto centerY = y + height * 0.5f;
-        // todo clean this up
 
         // draw octave lines	
-        const std::array<float, 7> octaves{
-            -2400.0f, -1200.0f, 0.0f, 1200.0f,
-            2400.0f, 3600.0f, 4800.0f
-        };
-        drawSemitoneLines(g, rotaryStartAngle, rotaryEndAngle, outline, centerX, centerY,
-                          radius * 0.25f, radius, octaves);
+        drawSemitoneLines(g, outline, centerX, centerY, radius * 0.25f, radius, octavesAngles);
 
         // draw 5ths
-        const std::array<float, 14> fifths{
-            -2000.0f, -1500.0f, -1000.0f,
-            -500.0f, 0.0f, 500.0f,
-            1000.0f, 1500.0f, 2000.0f,
-            2500.0f, 3000.0f, 3500.0f,
-            4000.0f, 4500.0f,
-
-        };
-        drawSemitoneLines(g, rotaryStartAngle, rotaryEndAngle, outline, centerX, centerY,
-                          radius * 0.8f, radius, fifths);
+        drawSemitoneLines(g, outline, centerX, centerY, radius * 0.8f, radius, fifthsAngles);
 
         // draw 4ths
-        const std::array<float, 10> fourths{
-            -2100.0f, -1400.0f, -700.0f, 0.0f,
-            700.0f, 1400.0f, 2100.0f,
-            2800.0f, 3500.0f, 4200.0f
-        };
-        drawSemitoneLines(g, rotaryStartAngle, rotaryEndAngle, outline, centerX, centerY,
-                          radius, radius * 1.1f, fourths);
+        drawSemitoneLines(g, outline, centerX, centerY, radius, radius * 1.1f, fourthsAngles);
     }
 
     {
@@ -176,7 +153,7 @@ void CleanLookAndFeel::drawRotarySlider(Graphics& g, int x, int y, int width, in
     drawThumbKnob(g, slider, outline, valueLineW, thumbPoint, thumbWidth);
 }
 
-void CleanLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int height,
+void CleanLookAndFeel::drawGroupComponentOutline(Graphics& g, const int width, const int height,
                                                  const String& text, const Justification& position,
                                                  GroupComponent& group)
 {
@@ -186,19 +163,20 @@ void CleanLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int hei
     const auto textEdgeGap = 4.0f;
     auto cs = 5.0f;
 
-    Font f(textH);
+    const Font f(textH);
 
     Path p;
-    auto x = indent;
-    auto y = f.getAscent() - 3.0f;
-    auto w = jmax(0.0f, width - x * 2.0f);
-    auto h = jmax(0.0f, height - y - indent);
+    const auto x = indent;
+    const auto y = f.getAscent() - 3.0f;
+    const auto w = jmax(0.0f, width - x * 2.0f);
+    const auto h = jmax(0.0f, height - y - indent);
     cs = jmin(cs, w * 0.5f, h * 0.5f);
-    auto cs2 = 2.0f * cs;
+    const auto cs2 = 2.0f * cs;
 
-    auto textW = text.isEmpty()
-                     ? 0
-                     : jlimit(0.0f, jmax(0.0f, w - cs2 - textEdgeGap * 2), f.getStringWidth(text) + textEdgeGap * 2.0f);
+    const auto textW = text.isEmpty()
+                           ? 0
+                           : jlimit(0.0f, jmax(0.0f, w - cs2 - textEdgeGap * 2),
+                                    f.getStringWidth(text) + textEdgeGap * 2.0f);
     auto textX = cs + textEdgeGap;
 
     if (position.testFlags(Justification::horizontallyCentred))
@@ -221,7 +199,7 @@ void CleanLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int hei
     p.addArc(x, y, cs2, cs2, MathConstants<float>::pi * 1.5f, MathConstants<float>::twoPi);
     p.lineTo(x + textX, y);
 
-    auto alpha = group.isEnabled() ? 1.0f : 0.5f;
+    const auto alpha = group.isEnabled() ? 1.0f : 0.5f;
 
     g.setColour(group.findColour(GroupComponent::outlineColourId)
                      .withMultipliedAlpha(alpha));
@@ -240,7 +218,7 @@ void CleanLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int hei
 
 //==============================================================================
 void CleanLookAndFeel::drawThumbKnob(Graphics& g, Slider& slider, const Colour outline, const float valueLineW,
-                                     const Point<float> thumbPoint, const float thumbWidth) const
+                                     const Point<float> thumbPoint, const float thumbWidth)
 {
     const auto thumbArea = Rectangle<float>(thumbWidth, thumbWidth).withCentre(thumbPoint);
     Path thumbPath;
@@ -257,24 +235,13 @@ void CleanLookAndFeel::drawThumbKnob(Graphics& g, Slider& slider, const Colour o
 }
 
 template <std::size_t Size>
-void CleanLookAndFeel::drawSemitoneLines(Graphics& g, const float rotaryStartAngle, const float rotaryEndAngle,
+void CleanLookAndFeel::drawSemitoneLines(Graphics& g,
                                          const Colour colour, const float centerX, const float centerY,
                                          const float startRadius, const float endRadius,
-                                         std::array<float, Size> importantSemitones) const
+                                         const std::array<float, Size> importantSemitones) const
 {
-    for (auto& t : importantSemitones)
-    {
-        t += 2400.0f;
-        t /= 7200.0f;
-    }
-    std::array<float, Size> importantPitchAngles{};
-    for (auto i = 0; i < Size; ++i)
-    {
-        importantPitchAngles[i] = (1.0f - importantSemitones[i]) * rotaryStartAngle
-            + importantSemitones[i] * rotaryEndAngle;
-    }
     g.setColour(colour);
-    for (auto& theta : importantPitchAngles)
+    for (auto& theta : importantSemitones)
     {
         Path p;
         const auto startX = centerX + startRadius * std::cos(theta);

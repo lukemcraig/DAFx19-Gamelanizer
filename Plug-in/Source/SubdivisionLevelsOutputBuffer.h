@@ -20,32 +20,28 @@
   ==============================================================================
 */
 
-/** \addtogroup Utility
+#pragma once
+
+/** \addtogroup Core
  *  @{
  */
 
-#pragma once
 /**
- * \brief Utility functions for calculating the modulus of x/y where the result has the same sign as y.
- * This is useful for wrapping indices of circular buffers.
- * This behaves the same as Python's % (modulo) operator and Matlab's mod().
- * It behaves differently from std::mod, std::remainder, and the C++ % operator.
- * 
- * \see https://stackoverflow.com/questions/1907565/c-and-python-different-behaviour-of-the-modulo-operation
- * \see https://www.mathworks.com/help/matlab/ref/mod.html
- * \see https://docs.scipy.org/doc/numpy/reference/generated/numpy.mod.html
+ * \brief Struct for the buffer where the subdivision level outputs are overlapped and added in the correct positions.
  */
-struct ModuloSameSignAsDivisor
+struct SubdivisionLevelsOutputBuffer
 {
     /**
-     * \brief Same as (x % y) in Python or mod(x,y) in Matlab. For ints.
+     * \brief The actual buffer
      */
-    static int mod(const int x, const int y) { return ((x % y) + y) % y; }
+    AudioBuffer<float> data;
 
     /**
-     * \brief Same as (x % y) in Python or mod(x,y) in Matlab. For floats.
+     * \brief The read position of every channel in the buffer is the same.
      */
-    static float mod(float x, float y);
+    int readPosition{};
+
+    JUCE_LEAK_DETECTOR(SubdivisionLevelsOutputBuffer)
 };
 
 /** @}*/

@@ -25,6 +25,10 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include <chrono>
 
+/** \addtogroup Utility
+ *  @{
+ */
+
 /**
  * \brief A utility class to measure the time between two points in code.
  * This is similar to JUCE's PerformanceCounter class. The difference is that this 
@@ -37,8 +41,8 @@
 class PerformanceMeasures
 {
 public:
-    PerformanceMeasures();
-    ~PerformanceMeasures();
+    PerformanceMeasures() = default;
+    ~PerformanceMeasures() = default;
     //==============================================================================
     /**
      * \brief Call this so that multiple measurements can be recorded without having to reopen the session.
@@ -60,10 +64,10 @@ public:
 private:
     enum
     {
-		// 32 beats at 80BPM, 44.1kHz
+        // 32 beats at 80BPM, 44.1kHz
         stopAtSample = 1058400,
-		// large enough array size for block size of 32 
-        nMeasurements = 33100 
+        // large enough array size for block size of 32 
+        nMeasurements = 33100
     };
 
     std::array<double, nMeasurements> measurements{};
@@ -73,3 +77,5 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PerformanceMeasures)
 };
 #endif
+
+/** @}*/

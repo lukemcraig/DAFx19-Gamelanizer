@@ -27,26 +27,41 @@
 #include "CleanLookAndFeel.h"
 #include "SliderToggleableSnap.h"
 
+/** \addtogroup GUI
+ *  @{
+ */
 
 /**
  * \brief The GUI for the plug-in
  */
-class GamelanizerAudioProcessorEditor : public AudioProcessorEditor,
-                                         public TextEditor::Listener,
-                                         public Timer
+class GamelanizerAudioProcessorEditor final : public AudioProcessorEditor,
+                                              public TextEditor::Listener,
+                                              public Timer
 {
 public:
     GamelanizerAudioProcessorEditor(GamelanizerAudioProcessor&, AudioProcessorValueTreeState&, GamelanizerParameters&);
+
+    GamelanizerAudioProcessorEditor(const GamelanizerAudioProcessorEditor&) = delete;
+
+    GamelanizerAudioProcessorEditor& operator=(const GamelanizerAudioProcessorEditor&) = delete;
+
+    GamelanizerAudioProcessorEditor(GamelanizerAudioProcessorEditor&&) = delete;
+
+    GamelanizerAudioProcessorEditor& operator=(GamelanizerAudioProcessorEditor&&) = delete;
+
     ~GamelanizerAudioProcessorEditor();
 
     //==============================================================================
     void paint(Graphics&) override;
+
     void resized() override;
 
     void timerCallback() override;
 
     void textEditorFocusLost(TextEditor&) override;
+
     void textEditorEscapeKeyPressed(TextEditor&) override;
+
     void textEditorReturnKeyPressed(TextEditor&) override;
 
 private:
@@ -102,6 +117,9 @@ private:
 
     //==============================================================================
     void updateProcessorTempo();
+
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GamelanizerAudioProcessorEditor)
+    JUCE_LEAK_DETECTOR(GamelanizerAudioProcessorEditor)
 };
+
+/** @}*/

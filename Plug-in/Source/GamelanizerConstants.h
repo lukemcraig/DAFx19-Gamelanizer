@@ -21,13 +21,18 @@
 */
 
 #pragma once
+
+/** \addtogroup Core
+ *  @{
+ */
+
 /**
  * \brief Constants that are used in multiple places. 
  */
 struct GamelanizerConstants
 {
     /**
-	 * \brief Number of subdivision levels.
+	 * \brief Number of subdivision levels, \f$M\f$.
 	 */
     static constexpr int maxLevels{4};
 
@@ -40,5 +45,17 @@ struct GamelanizerConstants
      * \brief Maximum BPM that the GUI is allowed to set.
      * This isn't actually necessary for operation and could be taken out.
      */
-    static constexpr float maxBpm{1000.0f};  
+    static constexpr float maxBpm{1000.0f};
+
+    /**
+	 * \brief The minimum pitch shift in cents allowable.
+	 */
+    static constexpr float minPitchShiftCents{-2400.0f};
+
+    /**
+	 * \brief The maximum pitch shift in cents allowable.
+	 */
+    static constexpr float maxPitchShiftCents{4800.0f};
 };
+
+/** @}*/

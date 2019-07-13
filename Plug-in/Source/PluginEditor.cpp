@@ -24,8 +24,8 @@
 
 //==============================================================================
 GamelanizerAudioProcessorEditor::GamelanizerAudioProcessorEditor(GamelanizerAudioProcessor& p,
-                                                                   AudioProcessorValueTreeState& vts,
-                                                                   GamelanizerParameters& gp)
+                                                                 AudioProcessorValueTreeState& vts,
+                                                                 GamelanizerParameters& gp)
     : AudioProcessorEditor(&p), processor(p), gamelanizerParameters(gp), valueTreeState(vts)
 {
     LookAndFeel::setDefaultLookAndFeel(&cleanLookAndFeel);
@@ -52,7 +52,7 @@ GamelanizerAudioProcessorEditor::GamelanizerAudioProcessorEditor(GamelanizerAudi
 #ifdef JUCE_DEBUG
                                     + "DEBUG BUILD: " + __TIMESTAMP__
 #endif
-									, "OK",
+                                    , "OK",
                                     this);
     };
 
@@ -182,7 +182,7 @@ GamelanizerAudioProcessorEditor::GamelanizerAudioProcessorEditor(GamelanizerAudi
     tempoEditorLabel.attachToComponent(&tempoEditor, false);
 
     // make it so clicking outside the text editor makes it lose focus
-	setWantsKeyboardFocus(true);
+    setWantsKeyboardFocus(true);
     startTimer(200);
     setResizable(true, true);
     setResizeLimits(400, 400, 1680, 1050);
@@ -278,15 +278,15 @@ void GamelanizerAudioProcessorEditor::resized()
 void GamelanizerAudioProcessorEditor::timerCallback()
 {
     // disable the tempo field if the DAW is playing    
-    tempoEditor.setEnabled(!processor.getHostIsPlaying());
+    tempoEditor.setEnabled(!processor.getPreventGuiBpmChange());
 }
 
 void GamelanizerAudioProcessorEditor::updateProcessorTempo()
 {
     auto newBpm = tempoEditor.getText().getFloatValue();
-	newBpm = jmin(newBpm, GamelanizerConstants::maxBpm);
-	newBpm = jmax(newBpm, GamelanizerConstants::minBpm);
-	tempoEditor.setText(String(newBpm));
+    newBpm = jmin(newBpm, GamelanizerConstants::maxBpm);
+    newBpm = jmax(newBpm, GamelanizerConstants::minBpm);
+    tempoEditor.setText(String(newBpm));
     processor.setCurrentBpm(newBpm);
 }
 

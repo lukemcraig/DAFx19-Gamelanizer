@@ -50,4 +50,3 @@ float WindowingFunctions::tukeyWindow(const int x, const int length, const float
     }
     return 0.0f;
 }
-

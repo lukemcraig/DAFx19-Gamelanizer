@@ -42,10 +42,6 @@ GamelanizerParameters::GamelanizerParameters()
     }
 }
 
-GamelanizerParameters::~GamelanizerParameters()
-{
-}
-
 //==============================================================================
 String GamelanizerParameters::getGainId(const int level) { return gainIds[level]; }
 
@@ -241,8 +237,12 @@ void GamelanizerParameters::addPitchesToLayout(std::vector<std::unique_ptr<Range
         params.push_back(std::make_unique<AudioParameterFloat>(
                 getPitchId(i),
                 "Pitch " + String(i + 1),
-                NormalisableRange<float>{-2400.0f, 4800.0f, 1.0f},
-                1200.0f * (i + 1), // default value  
+                NormalisableRange<float>{
+                    GamelanizerConstants::minPitchShiftCents,
+                    GamelanizerConstants::maxPitchShiftCents,
+                    1.0f
+                },
+                1200.0f * (i + 1.0f), // default value  
                 String(),
                 AudioProcessorParameter::genericParameter,
                 pitchShiftValueToString,

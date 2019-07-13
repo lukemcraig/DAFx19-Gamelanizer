@@ -22,20 +22,16 @@
 
 #include "SliderToggleableSnap.h"
 
-SliderToggleableSnap::SliderToggleableSnap()
-{
-}
-
 double SliderToggleableSnap::snapValue(const double attemptedValue, DragMode)
 {
     // snap to octaves
     if (ModifierKeys::currentModifiers.isShiftDown())
         return std::round(attemptedValue / 1200.0) * 1200.0;
-	// snap to fifths
-	if (ModifierKeys::currentModifiers.isCtrlDown() || ModifierKeys::currentModifiers.isCommandDown())
-		return std::round(attemptedValue / 700.0) * 700.0;
-	// snap to fourths
-	if (ModifierKeys::currentModifiers.isAltDown())
-		return std::round(attemptedValue / 500.0) * 500.0;
+    // snap to fifths
+    if (ModifierKeys::currentModifiers.isCtrlDown() || ModifierKeys::currentModifiers.isCommandDown())
+        return std::round(attemptedValue / 700.0) * 700.0;
+    // snap to fourths
+    if (ModifierKeys::currentModifiers.isAltDown())
+        return std::round(attemptedValue / 500.0) * 500.0;
     return attemptedValue;
 }

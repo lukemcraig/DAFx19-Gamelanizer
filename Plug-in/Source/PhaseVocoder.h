@@ -23,7 +23,12 @@
 #pragma once
 
 #include "../JuceLibraryCode/JuceHeader.h"
-#include "GamelanizerConstants.h"
+#include "PvResampler.h"
+#include "StatefulRoundedNumber.h"
+
+/** \addtogroup Core
+ *  @{
+ */
 
 /**
  * \brief An implementation of the phase vocoder technique tailored for Gamelanizer.
@@ -32,15 +37,24 @@
 class PhaseVocoder
 {
 public:
-    PhaseVocoder();
-    ~PhaseVocoder();
+    PhaseVocoder(int levelNumber, float effectiveTimeScaleFactor);
+
+    PhaseVocoder(const PhaseVocoder&) = delete;
+
+    PhaseVocoder& operator=(const PhaseVocoder&) = delete;
+
+    PhaseVocoder(PhaseVocoder&&) = delete;
+
+    PhaseVocoder& operator=(PhaseVocoder&&) = delete;
+
+    ~PhaseVocoder() = default;
 
     /**
      * \brief Must be called before playback begins. Effective time scale factor will never change but pitch shift can.
      * \param initPitchShiftFactor (2 is an octave, 3/2 is a fifth, 4/3 is a fourth)
-     * \param initEffectiveTimeScaleFactor Should be a power of a 2. (2 makes the output twice as fast as the input)
      */
-    void initParams(float initPitchShiftFactor, float initEffectiveTimeScaleFactor);
+    void initParams(float initPitchShiftFactor);
+
     /**
 	 * \brief Thread safe way to set the next pitch shift factor to be used. 
 	 * This will take effect in immediately after processing a phase vocoder frame
@@ -50,29 +64,31 @@ public:
 	 * \param newNextPitchShiftFactorCents (2 is an octave, 3/2 is a fifth, 4/3 is a fourth)
 	 */
     void queueParams(float newNextPitchShiftFactorCents);
+
     /**
      * \brief This should be called immediately after processing a phase vocoder frame, in order to set the new pitch shift factor.
      * If the pitch shift factor is the same, no processing is done.
      */
     void loadNextParams();
+
     /**
      * \brief Call this at the beginning of each new beat to reinitialize the phases.
      */
     void resetBetweenBeats();
+
     /**
      * \brief Call this at the beginning of playback or if the timeline position jumps around.
      */
     void fullReset();
 
     /**
-     * \brief Push a single sample onto the resampler queue and resample a hop and process a frame if possible.
-     * \param sampleValue The audio data
-     * \param skipProcessing True if this is just being called to get the state of the array indexes where they should be 
+     * \brief Push a single sample onto the resampler inputQueue and resample a hop and process a frame if possible.
+     * \param sampleValue The audio data   
      * \return 0 if no new data available. Hop size if a new frame is available on inOut.
      */
-    int processSample(float sampleValue, bool skipProcessing);
+    int processSample(float sampleValue);
 
-    const float* getFftInOutReadPointer() const { return fft.inOut; }
+    [[nodiscard]] const float* getFftInOutReadPointer() const { return fft.inOut.data(); }
 
     static int getFftSize() { return fftSize; }
     //==============================================================================
@@ -82,7 +98,8 @@ private:
      */
     static constexpr int fftOrder{10};
     /**
-     * \brief The FFT size (2^fftOrder)
+     * \brief The FFT size \f[N\f].
+     * 
      */
     static constexpr int fftSize{1 << fftOrder};
     /**
@@ -93,20 +110,20 @@ private:
     //==============================================================================
 
     /**
-     * \brief Data related to the analysis frame that comes out of the resampler and goes into the time-stretching process
+     * \brief Data related to the analysis frame, which comes out of the resampler and goes into the time-stretching process.
      */
     struct AnalysisFrames
     {
-        /**
-        * \brief The number of analysis frames overlapping at one time.
-        */
-        static constexpr double analysisOverlapFactor{4.0};
+        explicit AnalysisFrames(int level);
 
         /**
-         * \brief The number of samples to hop for the overlapping analysis frames (after resampling, before FFT).
-         * TODO accumulated rounding errors?
+         * \brief Flag the frame buffer as uninitialized and discard its data
          */
-        static constexpr int analysisHopSize{static_cast<int>(fftSize / analysisOverlapFactor)};
+        void reset()
+        {
+            initialized = false;
+            writePosition = 0;
+        }
 
         /**
          * \brief The circular buffer for the (overlapping) time-domain frames that the resampler outputs.
@@ -123,41 +140,59 @@ private:
          * \brief Whether the circularBuffer has initially been filled with a full frame (rather than just a hop).
          */
         bool initialized{};
+
+    private:
+        /**
+        * \brief The number of analysis frames overlapping at one time, \f$o_a\f$.
+        * The 4th subdivision level does not need more than 4. 
+        * The 1st subdivision level needs 16 to sound smooth at 4800 cents but only 4 for less than 1200 cents.
+        * 
+        */
+        const double analysisOverlapFactor;
+
+    public:
+        /**
+         * \brief The number of samples to hop for the overlapping analysis frames (after resampling, before FFT).
+         * \f[h_a=\frac{N}{o_a}\f]
+         */
+        const int analysisHopSize;
+
+        /**
+        * \brief The actual overlap factor used due to the rounding of #analysisHopSize.
+        * This probably won't actually matter because the fft size should divide evenly by the overlap factor
+        */
+        const float analysisOverlapFactorActual;
     } analysisFrames;
 
     //==============================================================================
-    /**
-     * \brief This length is based on #calculateMaximumNeededNumSamples. 
-     * TODO (It actually could be smaller if we knew the level number)
-     */
-    static constexpr int resamplerLength = (GamelanizerConstants::maxLevels << 2) * AnalysisFrames::analysisHopSize
-        + (GamelanizerConstants::maxLevels << 2) * 4 + 1;
-
-    //==============================================================================
 
     /**
-     * \brief The effective time scale factor, how much faster the output is than the input.
-     * Should be a power of two for Gamelanizer
-     * todo make this const and assigned with the constructor
+     * \brief The effective time scale factor: how much faster the output is than the input.
+     * Should be a power of two for Gamelanizer (2 makes the output twice as fast as the input)
+     * \f[r[i]=\frac{1}{2^i}\f]
      */
-    double effectiveTimeScaleFactor{};
+    const double effectiveTimeScaleFactor;
     /**
      * \brief The actual time scale factor that is applied after resampling is performed for pitch shifting. 
+     * \f[v[i]=r[i] p[i]\f]
      */
     double actualTimeScaleFactor{};
 
     /**
      * \brief The number of synthesis frames (after IFFT) overlapping frames at one.
+     * \f[o_s[i]=\frac{o_a}{v[i]}\f]
      */
     double synthesisOverlapFactor{};
 
     /**
      * \brief The number of samples to hop for the overlapping synthesis frames (after IFFT).
+     * \f[h_s[i]=h_a v[i]\f]
      */
-    double synthesisHopSize{};
+    StatefulRoundedNumber synthesisHopSize{StatefulRoundedNumber::roundDown};
 
     /**
     * \brief The current pitch shift factor used by the resampler
+    *  \f[p[i]=2^{\frac{c[i]}{1200}}\f]
     */
     double pitchShiftFactor{};
 
@@ -173,44 +208,8 @@ private:
     std::atomic<float> nextPitchShiftFactorCents{};
 
     //==============================================================================
-    /**
-     * \brief Data related to the resampler that is used for pitch shifting
-     */
-    struct Resampler
-    {
-        /**
-        * \brief The actual interpolator instance to do pitch shifting before time stretching is done.
-        */
-        CatmullRomInterpolator interpolator;
 
-        /**
-        * \brief The maximum number of samples that the resampler could need in order to always output analysisHopSize samples.
-        */
-        int maxNeedSamples{};
-
-        /**
-         * \brief The FIFO queue of time domain data that's given as input to the resampler.
-         */
-        struct Queue
-        {
-            /**
-             * \brief The actual data of the queue
-             */
-            std::array<float, resamplerLength> data{};
-
-            /**
-             * \brief The write position of the resamplerQueue
-             */
-            int writePosition{};
-        } queue;
-
-        /**
-         * \brief The output of the resampler is written to this before being copied to fftQueue.
-         * This is necessary because it might need to wrap around fftQueue, but the resampler class will not handle that
-         * todo std::array?
-         */
-        float resamplerAnalysisHopBuffer[AnalysisFrames::analysisHopSize]{};
-    } resampler;
+    PvResampler resampler;
 
     /**
      * \brief The FFT object and related data
@@ -229,7 +228,9 @@ private:
          * the whole thing after forward transforming.
          * reinterpret_cast is used on this. 
          */
-        float inOut[2 * fftSize]{};
+        std::array<float, 2 * fftSize> inOut{};
+
+        //float inOut[2 * fftSize]{};
 
         /**
          * \brief The Hann Window and its #amplitudeCompensationScale factor
@@ -272,7 +273,7 @@ private:
         /**
          * \brief False for the first frame of every beat
          */
-        bool isInitialized{};
+        bool initialized{};
     } previousFramePhases;
 
     //==============================================================================
@@ -283,17 +284,7 @@ private:
      */
     void setParams(float newPitchShiftFactor, float newPitchShiftFactorCents);
 
-    /**
-     * \brief Calculate the maximum number of samples the resampler might need to produce desiredNumOut
-     * \param desiredNumOut the analysis hop size
-     * \param oldPitchShiftFactor the previous pitch shift factor
-     * \return The maximum number of samples the resampler might need
-     */
-    int calculateMaximumNeededNumSamples(int desiredNumOut, double oldPitchShiftFactor) const;
     //==============================================================================
-    void resampleHop(bool skipProcessing);
-
-    void popUsedSamples(int numUsed);
 
     void pushResampledHopOnToAnalysisFrameBuffer();
 
@@ -316,17 +307,21 @@ private:
      * \brief Calculate the phase of a complex frequency bin
      * \return The phase
      */
-    static float complexBinPhase(const std::complex<float>& complexBin);
+    static float complexBinPhase(std::complex<float> complexBin);
 
     /**
      * \brief Calculate the magnitude of a complex frequency bin
      * \return The magnitude
      */
-    static float complexBinMag(const std::complex<float>& complexBin);
+    static float complexBinMag(std::complex<float> complexBin);
 
-    static float calculateFrequencyDeviation(float oldPhase, float currentPhase, int k);
+    static float calculateFrequencyDeviation(float oldPhase, float currentPhase, int k,
+                                             float analysisOverlapFactor, float analysisHopSize);
 
     static float wrapPhase(float phaseIn);
+
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PhaseVocoder)
+    JUCE_LEAK_DETECTOR(PhaseVocoder)
 };
+
+/** @}*/

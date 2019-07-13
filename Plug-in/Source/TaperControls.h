@@ -24,24 +24,41 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 
+/** \addtogroup GUI
+ *  @{
+ */
 
 /**
  * \brief Component class for drawing and changing the Tukey windows of each subdivision level
  */
-class TaperControls : public Component,
-                      public Slider::Listener
+class TaperControls final : public Component,
+                            public Slider::Listener
 {
 public:
     TaperControls();
+
+    TaperControls(const TaperControls&) = delete;
+
+    TaperControls& operator=(const TaperControls&) = delete;
+
+    TaperControls(TaperControls&&) = delete;
+
+    TaperControls& operator=(TaperControls&&) = delete;
+
     ~TaperControls();
 
     void paint(Graphics&) override;
+
     void resized() override;
+
     void sliderValueChanged(Slider* slider) override;
+
     void visibilityChanged() override;
 
     typedef AudioProcessorValueTreeState::SliderAttachment SliderAttachment;
+
     SliderAttachment* attachSlider(AudioProcessorValueTreeState& valueTreeState, const String& pid);
+
 private:
     Slider taperSlider;
 
@@ -50,5 +67,7 @@ private:
 
     void updateWindowPath(float windowAlpha);
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TaperControls)
+    JUCE_LEAK_DETECTOR(TaperControls)
 };
+
+/** @}*/

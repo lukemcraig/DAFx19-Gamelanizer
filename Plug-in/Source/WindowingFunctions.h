@@ -23,6 +23,11 @@
 #pragma once
 #include <array>
 #include "../JuceLibraryCode/JuceHeader.h"
+
+/** \addtogroup Utility
+ *  @{
+ */
+
 /**
  * \brief Utility windowing functions
  */
@@ -50,10 +55,12 @@ struct WindowingFunctions
     template <typename T, std::size_t Size>
     static void fillWithNonsymmetricHannWindow(std::array<T, Size>& window, int fftSize)
     {
-        const auto twoPiOverM = juce::MathConstants<T>::twoPi / static_cast<T>(fftSize);
+        const auto twoPiOverM = MathConstants<T>::twoPi / static_cast<T>(fftSize);
         for (auto n = 0; n < window.size(); n++)
         {
             window[n] = 0.5f - 0.5f * std::cos(twoPiOverM * n);
         }
     }
 };
+
+/** @}*/

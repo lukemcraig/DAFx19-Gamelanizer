@@ -22,14 +22,6 @@
 #if MeasurePerformance
 #include "PerformanceMeasures.h"
 
-PerformanceMeasures::PerformanceMeasures()
-{
-}
-
-PerformanceMeasures::~PerformanceMeasures()
-{
-}
-
 void PerformanceMeasures::reset()
 {
     measurementIndex = 0;
@@ -70,8 +62,8 @@ void PerformanceMeasures::finishMeasurements(
             };
 
             if (measurementLog.exists())
-                return;            
-            auto created = measurementLog.create();
+                return;
+            const auto created = measurementLog.create();
 
             if (created.wasOk())
             {

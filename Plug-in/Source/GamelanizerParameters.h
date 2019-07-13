@@ -25,56 +25,78 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "GamelanizerConstants.h"
 
+/** \addtogroup Parameters
+ *  @{
+ */
+
 /**
  * \brief A helper class for the storing the ID Strings of the parameters and building the parameter layout.
- * AudioProcessorValueTreeState and PluginEditor rely on this.
+ * 
+ * GamelanizerParametersVtsHelper and GamelanizerAudioProcessorEditor rely on this.
  */
 class GamelanizerParameters
 {
 public:
     GamelanizerParameters();
 
-    ~GamelanizerParameters();
+    GamelanizerParameters(const GamelanizerParameters&) = delete;
+
+    GamelanizerParameters& operator=(const GamelanizerParameters&) = delete;
+
+    GamelanizerParameters(GamelanizerParameters&&) = delete;
+
+    GamelanizerParameters& operator=(GamelanizerParameters&&) = delete;
+
+    ~GamelanizerParameters() = default;
 
     /**
      * \param level The subdivision level
      */
     String getGainId(int level);
+
     /**
      * \param level The subdivision level
      */
     String getMuteId(int level);
+
     /**
      * \param level The subdivision level
      */
     String getPanId(int level);
+
     /**
      * \param level The subdivision level
      */
     String getPitchId(int level);
+
     /**
      * \param level The subdivision level
      */
     String getTaperId(int level);
+
     /**
      * \param level The subdivision level
      */
     String getHpfId(int level);
+
     /**
      * \param level The subdivision level
      */
     String getLpfId(int level);
+
     /**
      * \param level The subdivision level
      * \param note The note number (0-3)
      */
     String getDropId(int level, int note);
+
     //==============================================================================
     /**
      * \brief Called by the AudioProcessorValueTreeState's constructor.
      * \return 
      */
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
     //==============================================================================
 private:
     //==============================================================================
@@ -87,14 +109,24 @@ private:
     std::array<String, GamelanizerConstants::maxLevels> hpfIds;
     std::array<String, GamelanizerConstants::maxLevels> lpfIds;
     std::array<std::array<String, 4>, GamelanizerConstants::maxLevels> dropIds;
+
     //==============================================================================
     void addGainsToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params);
+
     void addMutesToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params);
+
     void addPansToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params);
+
     void addTapersToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params);
+
     void addFiltersToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params);
+
     void addPitchesToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params);
+
     void addDropsToLayout(std::vector<std::unique_ptr<RangedAudioParameter>>& params);
+
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GamelanizerParameters)
+    JUCE_LEAK_DETECTOR(GamelanizerParameters)
 };
+
+/** @}*/

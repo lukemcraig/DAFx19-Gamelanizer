@@ -20,62 +20,81 @@
   ==============================================================================
 */
 #pragma once
+
+/** \addtogroup Core
+ *  @{
+ */
+
 /**
  * \brief Data about the length of a beat and our position in it.
  */
 struct BeatSampleInfo
 {
     /**
-     * \brief This should be called when the BPM, timeline position, or sample rate is changed.
-     * \param samplesPerBeatFractional the exact samples per beat.
+     * \brief This should be called when the BPM is changed. Starts this struct back at the beginning of the timeline.
+     * \param newSamplesPerBeatFractional the exact samples per beat.
      */
-    void reset(double samplesPerBeatFractional) ;
+    void reset(double newSamplesPerBeatFractional);
+
+    /**
+     * \brief Start this struct back at the beginning of the timeline.
+     */
+    void reset();
 
     /**
      * \brief This should be called when the host moves to a new beat.
-     * \param samplesPerBeatFractional eventually this will allow changing tempos. For now it should be the same value that was called in reset.
      */
-    void setNextBeatInfo(double samplesPerBeatFractional) ;
+    void setNextBeatInfo();
 
     /**
 	 * \brief This should be called after every sample is processed to internally track the host timeline position.
 	 */
-	void incrementSamplesIntoBeat()  { ++samplesIntoBeat; }
+    void incrementSamplesIntoBeat() { ++samplesIntoBeat; }
 
     /**
 	 * \return True if we're at a beat boundary
 	 */
-	bool isPastBeatEnd() const { return samplesIntoBeat >= beatSampleLength; }
+    [[nodiscard]] bool isPastBeatEnd() const { return samplesIntoBeat >= beatSampleLength; }
+
     /**
 	 * \return The number of samples through the beat the host timeline has moved past
 	 */
-	int getSamplesIntoBeat() const  { return samplesIntoBeat; }
-	/**
+    [[nodiscard]] int getSamplesIntoBeat() const { return samplesIntoBeat; }
+
+    /**
      * \return The sample position of start of the beat. Prevents accumulated rounding errors.
      */
-	int getBeatSampleStart() const  { return beatSampleStart; }
-	/**
+    [[nodiscard]] int getBeatSampleStart() const { return beatSampleStart; }
+
+    /**
      * \return The sample position of end of the beat. Prevents accumulated rounding errors.
      */
-	int getBeatSampleEnd() const  { return beatSampleEnd; }
-	/**
+    [[nodiscard]] int getBeatSampleEnd() const { return beatSampleEnd; }
+
+    /**
      * \brief This value changes from beat to beat to prevent accumulated rounding errors.
      * \return The length in whole samples of the current beat.
      */
-	int getBeatSampleLength() const  { return beatSampleLength; }
+    [[nodiscard]] int getBeatSampleLength() const { return beatSampleLength; }
+
     /**
 	 * \return The number of the beat, starting from 0.
 	 */
-	int getBeatNumber() const  { return beatNumber; }
+    [[nodiscard]] int getBeatNumber() const { return beatNumber; }
+
     /**
 	 * \return True if the current beat is the second one in a pair of beats
 	 */
-	int isBeatB() const  { return beatB; }
+    [[nodiscard]] int isBeatB() const { return beatB; }
+
 private:
-	int samplesIntoBeat{};
-	int beatSampleStart{};
-	int beatSampleEnd{};
-	int beatSampleLength{};
-	int beatNumber{};
-	bool beatB{};
+    double samplesPerBeatFractional{};
+    int samplesIntoBeat{};
+    int beatSampleStart{};
+    int beatSampleEnd{};
+    int beatSampleLength{};
+    int beatNumber{};
+    bool beatB{};
 };
+
+/** @}*/

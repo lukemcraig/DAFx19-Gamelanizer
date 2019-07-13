@@ -30,25 +30,23 @@ TaperControls::TaperControls()
     addAndMakeVisible(taperSlider);
     taperSlider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     taperSlider.setPopupDisplayEnabled(true, true, this);
-	
+
     taperSlider.addListener(this);
 }
 
 TaperControls::~TaperControls()
 {
     taperSlider.removeListener(this);
-   // taperSlider.setLookAndFeel(nullptr);
-   // setLookAndFeel(nullptr);
+    // taperSlider.setLookAndFeel(nullptr);
+    // setLookAndFeel(nullptr);
 }
 
 void TaperControls::visibilityChanged()
 {
-	
     // have to put this here to use the right colour
     const auto textColour = getLookAndFeel().findColour(Slider::textBoxTextColourId);
     taperSlider.setColour(TooltipWindow::textColourId, textColour);
 }
-
 
 void TaperControls::paint(Graphics& g)
 {
@@ -97,11 +95,11 @@ void TaperControls::updateWindowPath(const float windowAlpha)
     windowPath.lineTo(rectW + xOffset, rectH + yOffset);
 }
 
-
 /**
  * \brief Make sure that the attachment gets destroyed before this object!
  */
-TaperControls::SliderAttachment* TaperControls::attachSlider(AudioProcessorValueTreeState& valueTreeState, const String& pid)
+TaperControls::SliderAttachment* TaperControls::attachSlider(AudioProcessorValueTreeState& valueTreeState,
+                                                             const String& pid)
 {
     return new SliderAttachment(valueTreeState, pid, taperSlider);
 }

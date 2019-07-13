@@ -24,20 +24,17 @@
 #include "ModuloSameSignAsDivisor.h"
 #include "WindowingFunctions.h"
 //==============================================================================
-PhaseVocoder::PhaseVocoder()
+PhaseVocoder::PhaseVocoder(const int levelNumber,
+                           const float effectiveTimeScaleFactor) : analysisFrames{levelNumber},
+                                                                   effectiveTimeScaleFactor{effectiveTimeScaleFactor},
+                                                                   resampler{analysisFrames.analysisHopSize}
 {
     WindowingFunctions::fillWithNonsymmetricHannWindow(fft.window.data, fftSize);
-
-    resampler.interpolator.reset();
 }
 
-PhaseVocoder::~PhaseVocoder()
+void PhaseVocoder::initParams(const float initPitchShiftFactor)
 {
-}
-
-void PhaseVocoder::initParams(const float initPitchShiftFactor, const float initEffectiveTimeScaleFactor)
-{
-    effectiveTimeScaleFactor = initEffectiveTimeScaleFactor;
+    synthesisHopSize.reset();
 
     const auto pitchShiftFactorCentsLocal = 1200.0f * std::log2(initPitchShiftFactor);
     nextPitchShiftFactorCents.store(pitchShiftFactorCentsLocal);
@@ -47,20 +44,20 @@ void PhaseVocoder::initParams(const float initPitchShiftFactor, const float init
 
 void PhaseVocoder::setParams(const float newPitchShiftFactor, const float newPitchShiftFactorCents)
 {
-    const auto oldPitchShiftFactor = pitchShiftFactor;
     pitchShiftFactor = newPitchShiftFactor;
 
     pitchShiftFactorCents = newPitchShiftFactorCents;
 
     actualTimeScaleFactor = effectiveTimeScaleFactor * pitchShiftFactor;
-    synthesisOverlapFactor = AnalysisFrames::analysisOverlapFactor / actualTimeScaleFactor;
 
-    synthesisHopSize = AnalysisFrames::analysisHopSize * actualTimeScaleFactor;
+    synthesisOverlapFactor = analysisFrames.analysisOverlapFactorActual / actualTimeScaleFactor;
 
-    resampler.maxNeedSamples = calculateMaximumNeededNumSamples(AnalysisFrames::analysisHopSize, oldPitchShiftFactor);
+    synthesisHopSize.exactValue = analysisFrames.analysisHopSize * actualTimeScaleFactor;
 
-    fft.window.amplitudeCompensationScale = static_cast<float>(synthesisHopSize / FftStruct::FftWindow::squaredWindowSum
-    );
+    resampler.updatePitchShiftFactor(newPitchShiftFactor);
+
+    fft.window.amplitudeCompensationScale = static_cast<float>(synthesisHopSize.exactValue
+        / FftStruct::FftWindow::squaredWindowSum);
 }
 
 void PhaseVocoder::loadNextParams()
@@ -78,57 +75,37 @@ void PhaseVocoder::queueParams(const float newNextPitchShiftFactorCents)
     nextPitchShiftFactorCents.store(newNextPitchShiftFactorCents);
 }
 
-int PhaseVocoder::calculateMaximumNeededNumSamples(const int desiredNumOut, const double oldPitchShiftFactor) const
+void PhaseVocoder::resetBetweenBeats()
 {
-    const auto neededNormally = desiredNumOut * pitchShiftFactor;
-    // because the resampler doesn't get reset when the pitchShiftFactor parameter is changed, it might need these extra samples
-    const auto neededForStatefulPosition = pitchShiftFactor * 2 + oldPitchShiftFactor * 2;
-    return static_cast<int>(ceil(neededNormally + neededForStatefulPosition));
+    previousFramePhases.initialized = false;
+    analysisFrames.reset();
+    resampler.resetBetweenBeats();
+    loadNextParams();
 }
 
-
-void PhaseVocoder::resampleHop(const bool skipProcessing)
+void PhaseVocoder::fullReset()
 {
-    int numUsed;
-    if (!skipProcessing)
-    {
-        numUsed = resampler.interpolator.process(pitchShiftFactor, resampler.queue.data.data(),
-                                                 resampler.resamplerAnalysisHopBuffer,
-                                                 AnalysisFrames::analysisHopSize);
-    }
-    else
-    {
-        numUsed = static_cast<int>(AnalysisFrames::analysisHopSize * pitchShiftFactor);
-    }
-    jassert(numUsed <= resampler.queue.writePosition);
-    popUsedSamples(numUsed);
+    resampler.fullReset();
+    resetBetweenBeats();
 }
 
-void PhaseVocoder::popUsedSamples(const int numUsed)
-{
-    const auto nUnconsumed = resampler.queue.writePosition - numUsed;
-    jassert(nUnconsumed >= 0);
-
-    // copy the unconsumed samples to the front of the queue
-    for (auto i = 0; i < nUnconsumed; ++i)
-        resampler.queue.data[i] = resampler.queue.data[numUsed + i];
-
-    resampler.queue.writePosition -= numUsed;
-}
+//==============================================================================
 
 void PhaseVocoder::pushResampledHopOnToAnalysisFrameBuffer()
 {
-    for (auto sampleValue : resampler.resamplerAnalysisHopBuffer)
+    const auto newHop = resampler.getAnalysisHopBuffer();
+    for (auto sampleValue : newHop)
     {
         analysisFrames.circularBuffer[analysisFrames.writePosition] = sampleValue;
-        analysisFrames.writePosition += 1;
+        ++analysisFrames.writePosition;
         if (analysisFrames.writePosition == fftSize)
         {
             // wrap around
             analysisFrames.writePosition = 0;
-            // flag that its been filled once. (this will stay true until the PV is reset at a beat boundary)
+            // flag that it's been filled once. (this will stay true until the PV is reset at a beat boundary)
             analysisFrames.initialized = true;
         }
+        jassert(analysisFrames.writePosition<fftSize);
     }
 }
 
@@ -137,16 +114,16 @@ void PhaseVocoder::copyAnalysisFrameToFftInOut()
     for (auto i = 0; i < fftSize; ++i)
     {
         const auto index = analysisFrames.writePosition - fftSize + i;
-        const auto fftQueueIndexRewound = ModuloSameSignAsDivisor::modInt(index, fftSize);
-        jassert(fftQueueIndexRewound < fftSize && fftQueueIndexRewound >= 0);
-        fft.inOut[i] = analysisFrames.circularBuffer[fftQueueIndexRewound];
+        const auto indexRewound = ModuloSameSignAsDivisor::mod(index, fftSize);
+        jassert(indexRewound < fftSize && indexRewound >= 0);
+        fft.inOut[i] = analysisFrames.circularBuffer[indexRewound];
     }
 }
 
 void PhaseVocoder::storePhasesInBuffer()
 {
     // reinterpret_cast the fft buffer to complex
-    auto* complexBins = reinterpret_cast<std::complex<float>*>(fft.inOut);
+    auto* complexBins = reinterpret_cast<std::complex<float>*>(fft.inOut.data());
 
     for (auto k = 0; k < nComplexBins; ++k)
     {
@@ -162,7 +139,7 @@ void PhaseVocoder::storePhasesInBuffer()
 void PhaseVocoder::scaleAllFrequencyBinsAndStorePhaseBuffers()
 {
     // reinterpret_cast the fft buffer to complex
-    auto* complexBins = reinterpret_cast<std::complex<float>*>(fft.inOut);
+    auto* complexBins = reinterpret_cast<std::complex<float>*>(fft.inOut.data());
 
     for (auto k = 0; k < nComplexBins; ++k)
     {
@@ -182,7 +159,9 @@ void PhaseVocoder::scaleAllFrequencyBinsAndStorePhaseBuffers()
 std::complex<float> PhaseVocoder::scaleFrequencyBin(const int k, const float mag, const float currentPhase,
                                                     const float oldPhase)
 {
-    const auto freqDeviation = calculateFrequencyDeviation(oldPhase, currentPhase, k);
+    const auto freqDeviation = calculateFrequencyDeviation(oldPhase, currentPhase, k,
+                                                           analysisFrames.analysisOverlapFactorActual,
+                                                           static_cast<float>(analysisFrames.analysisHopSize));
     const auto omega = (MathConstants<float>::twoPi * static_cast<float>(k)) / fftSize;
     const auto trueFreq = omega + freqDeviation;
     const auto trueBinIndex = trueFreq * (fftSize / MathConstants<float>::twoPi);
@@ -202,12 +181,13 @@ std::complex<float> PhaseVocoder::scaleFrequencyBin(const int k, const float mag
 void PhaseVocoder::scaleAnalysisFrame()
 {
     copyAnalysisFrameToFftInOut();
-    // window fft buffer
-    FloatVectorOperations::multiply(fft.inOut, fft.window.data.data(), fftSize);
-    // rfft the fft buffer
-    fft.instance.performRealOnlyForwardTransform(fft.inOut, true);
 
-    if (previousFramePhases.isInitialized)
+    // window the FFT buffer
+    FloatVectorOperations::multiply(fft.inOut.data(), fft.window.data.data(), fftSize);
+    // RFFT the FFT buffer
+    fft.instance.performRealOnlyForwardTransform(fft.inOut.data(), true);
+
+    if (previousFramePhases.initialized)
     {
         // alter the phases for the time stretching
         scaleAllFrequencyBinsAndStorePhaseBuffers();
@@ -217,74 +197,55 @@ void PhaseVocoder::scaleAnalysisFrame()
         // this is the first frame we've processed of this beat
         storePhasesInBuffer();
         // both phase buffers are now initialized
-        previousFramePhases.isInitialized = true;
+        previousFramePhases.initialized = true;
     }
-    // inverse rfft the complex bins
-    fft.instance.performRealOnlyInverseTransform(fft.inOut);
+    // inverse RFFT the complex bins
+    fft.instance.performRealOnlyInverseTransform(fft.inOut.data());
     // synthesis window
-    FloatVectorOperations::multiply(fft.inOut, fft.window.data.data(), fftSize);
+    FloatVectorOperations::multiply(fft.inOut.data(), fft.window.data.data(), fftSize);
     // amplitude scaling
-    FloatVectorOperations::multiply(fft.inOut, fft.window.amplitudeCompensationScale, fftSize);
+    FloatVectorOperations::multiply(fft.inOut.data(), fft.window.amplitudeCompensationScale, fftSize);
 }
 
-void PhaseVocoder::resetBetweenBeats()
+int PhaseVocoder::processSample(const float sampleValue)
 {
-    previousFramePhases.isInitialized = false;
-    analysisFrames.initialized = false;
-    analysisFrames.writePosition = 0;
-    resampler.interpolator.reset();
-    loadNextParams();
-}
+    resampler.pushSample(sampleValue);
 
-void PhaseVocoder::fullReset()
-{
-    // throw away the data on the resampler queue
-    resampler.queue.writePosition = 0;
-    resetBetweenBeats();
-}
-
-int PhaseVocoder::processSample(const float sampleValue, const bool skipProcessing)
-{
-    resampler.queue.data[resampler.queue.writePosition] = sampleValue;
-    resampler.queue.writePosition += 1;
-
-    // if the number of samples on the queue is at least the number needed to get the desired output length
-    if (resampler.queue.writePosition > resampler.maxNeedSamples)
+    // if the number of samples on the inputQueue is at least the number needed to get the desired output length
+    const auto newHopAvailable = resampler.resampleHopToAnalysisHopBufferIfReady(pitchShiftFactor);
+    if (newHopAvailable)
     {
-        resampleHop(skipProcessing);
         pushResampledHopOnToAnalysisFrameBuffer();
         if (analysisFrames.initialized)
         {
-            if (!skipProcessing)
-            {
-                scaleAnalysisFrame();
-            }
-            // TODO track subsample position ?
-            const auto stepSize = static_cast<int>(synthesisHopSize);
-            return stepSize;
+            scaleAnalysisFrame();
+            return synthesisHopSize.getNextInt();
         }
     }
     return 0;
 }
 
-float PhaseVocoder::complexBinPhase(const std::complex<float>& complexBin)
+//==============================================================================
+
+float PhaseVocoder::complexBinPhase(const std::complex<float> complexBin)
 {
     return std::arg(complexBin);
 }
 
-float PhaseVocoder::complexBinMag(const std::complex<float>& complexBin)
+float PhaseVocoder::complexBinMag(const std::complex<float> complexBin)
 {
     return std::abs(complexBin);
 }
 
 float PhaseVocoder::calculateFrequencyDeviation(const float oldPhase, const float currentPhase,
-                                                const int k)
+                                                const int k, const float analysisOverlapFactor,
+                                                const float analysisHopSize)
 {
     const auto frequencyContribution = MathConstants<float>::twoPi * static_cast<float>(k)
-        / static_cast<float>(AnalysisFrames::analysisOverlapFactor);
+        / analysisOverlapFactor;
     const auto numerator = currentPhase - oldPhase - frequencyContribution;
     const auto wrappedNumerator = wrapPhase(numerator);
-    const auto frequencyDeviation = wrappedNumerator / static_cast<float>(AnalysisFrames::analysisHopSize);
+    const auto frequencyDeviation = wrappedNumerator / analysisHopSize;
     return frequencyDeviation;
 }
 
@@ -292,5 +253,23 @@ float PhaseVocoder::wrapPhase(const float phaseIn)
 {
     constexpr auto pi = MathConstants<float>::pi;
     constexpr auto twoPi = MathConstants<float>::twoPi;
-    return ModuloSameSignAsDivisor::modFloat(phaseIn + pi, -twoPi) + pi;
+    return ModuloSameSignAsDivisor::mod(phaseIn + pi, -twoPi) + pi;
 }
+
+//==============================================================================
+
+PhaseVocoder::AnalysisFrames::AnalysisFrames(const int level): analysisOverlapFactor{jmax(4.0, std::pow(2, 4 - level))},
+                                                               analysisHopSize{
+                                                                   static_cast<int>(std::round(
+                                                                       fftSize / analysisOverlapFactor))
+                                                               },
+                                                               analysisOverlapFactorActual{
+                                                                   static_cast<float>(fftSize) / static_cast<float>(
+                                                                       analysisHopSize)
+                                                               }
+{
+    // it should be ok if this is false, but it will be nice to know if that ever is the case.
+    jassert(analysisOverlapFactorActual == analysisOverlapFactor);
+}
+
+//==============================================================================

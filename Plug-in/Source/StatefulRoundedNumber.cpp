@@ -19,31 +19,40 @@
 
   ==============================================================================
 */
+#include <cmath>
+#include "StatefulRoundedNumber.h"
 
-#include "BeatSampleInfo.h"
-#include "../JuceLibraryCode/JuceHeader.h"
-
-void BeatSampleInfo::reset(const double newSamplesPerBeatFractional)
+StatefulRoundedNumber::StatefulRoundedNumber(): roundingMethod(roundDown)
 {
-    samplesPerBeatFractional = newSamplesPerBeatFractional;
-    reset();
 }
 
-void BeatSampleInfo::reset()
+StatefulRoundedNumber::StatefulRoundedNumber(const RoundingMethod roundingMethod): roundingMethod(roundingMethod)
 {
-    beatSampleEnd = -1;
-    beatNumber = 0;
-    beatB = true;
-    setNextBeatInfo();
 }
 
-void BeatSampleInfo::setNextBeatInfo()
+void StatefulRoundedNumber::reset()
 {
-    ++beatNumber;
-    beatSampleStart = beatSampleEnd + 1;
-    // this is only valid if the tempo never changes
-    beatSampleEnd = static_cast<int>(std::round(samplesPerBeatFractional * beatNumber));
-    beatSampleLength = beatSampleEnd - beatSampleStart;
-    samplesIntoBeat = 0;
-    beatB = !beatB;
+    roundedOff = 0;
+}
+
+int StatefulRoundedNumber::roundDownMethod()
+{
+    const auto sum = exactValue + roundedOff;
+    const auto intPart = std::floor(sum);
+    // roundedOff will always be nonnegative
+    roundedOff = sum - intPart;
+    return static_cast<int>(intPart);
+}
+
+int StatefulRoundedNumber::roundTowardsZeroMethod()
+{
+    double intPart;
+    roundedOff = std::modf(exactValue + roundedOff, &intPart);
+    return static_cast<int>(intPart);
+}
+
+// ReSharper disable once CppMemberFunctionMayBeConst
+int StatefulRoundedNumber::getNextInt()
+{
+    return (this->*roundingMethod)();
 }

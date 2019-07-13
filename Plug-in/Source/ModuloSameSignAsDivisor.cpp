@@ -23,7 +23,9 @@
 #include "ModuloSameSignAsDivisor.h"
 #include <cmath>
 
-float ModuloSameSignAsDivisor::modFloat(const float x, const float y)
-{    
-    return std::fmodf((std::fmodf(x, y) + y), y);
+float ModuloSameSignAsDivisor::mod(const float x, const float y)
+{
+    const auto a = std::fmodf(x, y);
+    const auto b = a + y;
+    return std::fmodf(b, y);
 }

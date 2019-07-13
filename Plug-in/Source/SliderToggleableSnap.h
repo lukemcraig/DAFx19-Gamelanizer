@@ -23,17 +23,32 @@
 #pragma once
 #include "../JuceLibraryCode/JuceHeader.h"
 
+/** \addtogroup GUI
+ *  @{
+ */
+
 /**
  * \brief A rotary slider that snaps to the important semitones when the user holds modifier keys.
  */
-class SliderToggleableSnap : public Slider
+class SliderToggleableSnap final : public Slider
 {
 public:
-    SliderToggleableSnap();
-    // TODO double check this:
-    ~SliderToggleableSnap() override = default;
+    SliderToggleableSnap() = default;
+
+    SliderToggleableSnap(const SliderToggleableSnap&) = delete;
+
+    SliderToggleableSnap& operator=(const SliderToggleableSnap&) = delete;
+
+    SliderToggleableSnap(SliderToggleableSnap&&) = delete;
+
+    SliderToggleableSnap& operator=(SliderToggleableSnap&&) = delete;
+
+    ~SliderToggleableSnap() = default;
+
     double snapValue(double attemptedValue, DragMode dragMode) override;
 
 private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SliderToggleableSnap)
+    JUCE_LEAK_DETECTOR(SliderToggleableSnap)
 };
+
+/** @}*/

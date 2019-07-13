@@ -25,15 +25,27 @@
 #include "GamelanizerConstants.h"
 #include "GamelanizerParameters.h"
 
+/** \addtogroup Parameters
+ *  @{
+ */
+
 /**
  * \brief A helper class for parameter related methods that depend on the AudioProcessorValueTreeState
  */
-class GamelanizerParametersVTSHelper
+class GamelanizerParametersVtsHelper
 {
 public:
-    GamelanizerParametersVTSHelper(AudioProcessorValueTreeState&, GamelanizerParameters&);
+    GamelanizerParametersVtsHelper(AudioProcessorValueTreeState&, GamelanizerParameters&);
 
-    ~GamelanizerParametersVTSHelper();
+    GamelanizerParametersVtsHelper(const GamelanizerParametersVtsHelper&) = delete;
+
+    GamelanizerParametersVtsHelper& operator=(const GamelanizerParametersVtsHelper&) = delete;
+
+    GamelanizerParametersVtsHelper(GamelanizerParametersVtsHelper&&) = delete;
+
+    GamelanizerParametersVtsHelper& operator=(GamelanizerParametersVtsHelper&&) = delete;
+
+    ~GamelanizerParametersVtsHelper() = default;
 
     //==============================================================================
     /**
@@ -53,17 +65,27 @@ public:
      * Called from the constructor and from setStateInformation
      */
     void instantlyUpdateSmoothers();
+
     void updateSmoothers();
+
     //==============================================================================
     float getGain(int level);
+
     float getPan(int level);
+
     float getMute(int level);
+
     //==============================================================================	
     float getDropNote(int level, int note);
+
     float getTaper(int level);
-    ParameterAndWasChanged getPitch(const int level, bool smoothed = true);
+
+    ParameterAndWasChanged getPitch(int level, bool smoothed = true);
+
     ParameterAndWasChanged getLpFilterCutoff(int level);
+
     ParameterAndWasChanged getHpFilterCutoff(int level);
+
     //==============================================================================
 private:
     //==============================================================================
@@ -88,6 +110,10 @@ private:
     std::array<SmoothFloat, GamelanizerConstants::maxLevels> pitchesSmooth{};
     std::array<float, GamelanizerConstants::maxLevels> pitchesPrevious{};
     //==============================================================================
+
+    /**
+     * \brief How many samples before the filter coefficients are allowed to change
+     */
     static constexpr int filterUpdateRateInSamples{32};
 
     std::array<float*, GamelanizerConstants::maxLevels> lpfParamRawPointers{};
@@ -102,5 +128,7 @@ private:
     //==============================================================================
     std::array<std::array<float*, 4>, GamelanizerConstants::maxLevels> dropParamRawPointers{};
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GamelanizerParametersVTSHelper)
+    JUCE_LEAK_DETECTOR(GamelanizerParametersVtsHelper)
 };
+
+/** @}*/
