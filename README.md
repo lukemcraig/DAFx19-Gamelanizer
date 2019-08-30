@@ -3,7 +3,13 @@
 
 [Detailed documentation can be found here.](https://codedocs.xyz/lukemcraig/DAFx19-Gamelanizer/)
 
+## Demonstrations
+
 [Listen to input and output audio examples here.](https://soundcloud.com/user-803715768/sets/gamelanizer-audio-examples)
+
+[Here is a YouTube video showing the plug-in operating.](https://youtu.be/dPmx4D8Ckos)
+
+<a href="https://youtu.be/dPmx4D8Ckos" target="_blank"><img src="https://img.youtube.com/vi/dPmx4D8Ckos/maxresdefault.jpg" alt="Gamelanizer Video"  border="10" /></a>
 
 ## Usage
 Builds of the plug-in VSTs for Windows and macOS can be found in [the releases tab of the repo](https://github.com/lukemcraig/DAFx19-Gamelanizer/releases). The VSTs have only been tested in the latest version of REAPER. If you try them in another DAW feel free to let us know if they work. 
@@ -19,15 +25,7 @@ If you want to build Gamelanizer yourself, you'll need the latest version of [JU
 #### Optional
 If you want to use the MKL FFT and [have it installed on your computer](https://software.intel.com/en-us/mkl), go to the juce_dsp module page in the Projucer and set `JUCE_DSP_USE_INTEL_MKL` to `Enabled`. If you're building on macOS make sure you build with `Release - MKL` in Xcode. If you're building on Windows, follow the instructions in the `Notes` section of `Release - MKL` configuration in the Projucer.
 
-## Demonstrations
-
-[Listen to input and output audio examples here.](https://soundcloud.com/user-803715768/sets/gamelanizer-audio-examples)
-
 ![screenshot](https://github.com/lukemcraig/DAFx19-Gamelanizer/raw/master/screenshot.PNG)
-
-Here is a video of the plugin operating. Unfortunately, the screen capture made the GUI invisible but you can still hear the effect. A better video will be added soon.
-
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=uogfhojLrWQ" target="_blank"><img src="http://i3.ytimg.com/vi/uogfhojLrWQ/hqdefault.jpg" alt="Gamelanizer Demo" width="240" height="180" border="10" /></a>
 
 ## License
 Gamelanizer is licensed under the GNU General Public License v3.0. See [LICENSE](https://github.com/lukemcraig/DAFx19-Gamelanizer/blob/master/LICENSE) for more.
