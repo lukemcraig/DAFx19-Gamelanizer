@@ -5,7 +5,7 @@
 
 ## Demonstrations
 
-[Listen to input and output audio examples here.](https://soundcloud.com/user-803715768/sets/gamelanizer-audio-examples)
+[Listen to input and output audio examples here.](https://soundcloud.com/lukemcraig/sets/gamelanizer-audio-examples)
 
 [Here is a YouTube video showing the plug-in operating.](https://youtu.be/dPmx4D8Ckos)
 
